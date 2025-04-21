@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useAppContext, PaymentStatus } from "@/contexts/AppContext";
 import { FormatCurrency } from "@/components/FormatCurrency";
@@ -68,8 +69,15 @@ const Receivables = () => {
     discountValue?: number,
     discountType?: 'percentage' | 'fixed'
   ) => {
+    // Get selected receivables
     const selected = receivables.filter(r => selectedReceivables.includes(r.id));
-    const totalAmount = selected.reduce((sum, r) => sum + r.amount, 0);
+    
+    // Sort receivables by due date (oldest first)
+    const sortedSelected = [...selected].sort(
+      (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+    );
+    
+    const totalAmount = sortedSelected.reduce((sum, r) => sum + r.amount, 0);
     
     let remainingPayment = paymentAmount;
     
@@ -81,9 +89,24 @@ const Receivables = () => {
       remainingPayment = paymentAmount + (discountValue > 0 ? -adjustmentAmount : Math.abs(adjustmentAmount));
     }
 
-    selected.forEach(receivable => {
-      if (remainingPayment >= receivable.amount) {
-        // Full payment
+    // If the remaining payment is negative or zero, we can't process the payment
+    if (remainingPayment <= 0) {
+      toast.error("Valor de pagamento inválido após aplicar desconto/acréscimo.");
+      return;
+    }
+
+    // Process payments for each receivable in order (oldest first)
+    for (const receivable of sortedSelected) {
+      if (remainingPayment <= 0) {
+        // If we've used all the payment amount, just update due date if needed
+        if (newDueDate && new Date(newDueDate) > new Date(receivable.dueDate)) {
+          updateReceivable({
+            ...receivable,
+            dueDate: newDueDate,
+          });
+        }
+      } else if (remainingPayment >= receivable.amount) {
+        // Full payment for this receivable
         const originalAmount = receivable.amount;
         const paymentDate = new Date().toISOString();
         
@@ -110,7 +133,7 @@ const Receivables = () => {
         });
         
         remainingPayment -= originalAmount;
-      } else if (remainingPayment > 0) {
+      } else {
         // Partial payment
         const newAmount = receivable.amount - remainingPayment;
         const paymentDate = new Date().toISOString();
@@ -138,13 +161,8 @@ const Receivables = () => {
         });
         
         remainingPayment = 0;
-      } else if (newDueDate && new Date(newDueDate) > new Date(receivable.dueDate)) {
-        updateReceivable({
-          ...receivable,
-          dueDate: newDueDate,
-        });
       }
-    });
+    }
 
     toast.success("Pagamento processado com sucesso!");
     setIsDialogOpen(false);
