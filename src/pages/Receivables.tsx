@@ -1,15 +1,8 @@
-
 import React, { useState } from "react";
 import { useAppContext } from "@/contexts/AppContext";
 import { FormatCurrency } from "@/components/FormatCurrency";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { Dialog } from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -34,13 +27,16 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Search, Check, Clock, AlertCircle } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ReceivableDialog } from "@/components/ReceivableDialog";
+import { toast } from "sonner";
 
 const Receivables = () => {
   const { receivables, customers, updateReceivable } = useAppContext();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [currentReceivable, setCurrentReceivable] = useState<any>(null);
+  const [selectedReceivables, setSelectedReceivables] = useState<string[]>([]);
   
   // Get today's date in YYYY-MM-DD format
   const todayDate = new Date().toISOString().split("T")[0];
@@ -55,36 +51,101 @@ const Receivables = () => {
     const isToday = r.paymentDate && new Date(r.paymentDate).toISOString().split("T")[0] === todayDate;
     return r.status === "paid" && isToday;
   }).reduce((acc, r) => acc + r.amount, 0);
-  
-  const handleOpenDetailDialog = (receivable: any) => {
-    setCurrentReceivable(receivable);
-    setIsDialogOpen(true);
-  };
-  
-  const handleMarkAsPaid = () => {
-    if (!currentReceivable) return;
+
+  const handleBatchPayment = (
+    paymentAmount: number,
+    newDueDate?: string,
+    applyDiscount?: boolean,
+    discountValue?: number,
+    discountType?: 'percentage' | 'fixed'
+  ) => {
+    const selected = receivables.filter(r => selectedReceivables.includes(r.id));
+    const totalAmount = selected.reduce((sum, r) => sum + r.amount, 0);
     
-    const updatedReceivable = {
-      ...currentReceivable,
-      status: "paid",
-      paymentDate: new Date().toISOString(),
-    };
+    let remainingPayment = paymentAmount;
     
-    updateReceivable(updatedReceivable);
+    // Calculate final amount considering discount/addition
+    if (applyDiscount && discountValue) {
+      const adjustmentAmount = discountType === 'percentage' 
+        ? totalAmount * (discountValue / 100)
+        : discountValue;
+        
+      remainingPayment = paymentAmount + (discountValue > 0 ? -adjustmentAmount : Math.abs(adjustmentAmount));
+    }
+
+    // Process each selected receivable
+    selected.forEach(receivable => {
+      if (remainingPayment >= receivable.amount) {
+        // Full payment
+        updateReceivable({
+          ...receivable,
+          status: "paid",
+          paymentDate: new Date().toISOString(),
+        });
+        remainingPayment -= receivable.amount;
+      } else if (remainingPayment > 0) {
+        // Partial payment
+        const remainingAmount = receivable.amount - remainingPayment;
+        
+        // Create new receivable for remaining amount
+        const newReceivable = {
+          ...receivable,
+          id: generateId(),
+          amount: remainingAmount,
+          dueDate: newDueDate || receivable.dueDate,
+        };
+        
+        // Update original receivable as paid
+        updateReceivable({
+          ...receivable,
+          amount: remainingPayment,
+          status: "paid",
+          paymentDate: new Date().toISOString(),
+        });
+        
+        // Add new receivable for remaining amount
+        addReceivable(newReceivable);
+        
+        remainingPayment = 0;
+      } else if (newDueDate && new Date(newDueDate) > new Date(receivable.dueDate)) {
+        // Only renegotiate due date
+        updateReceivable({
+          ...receivable,
+          dueDate: newDueDate,
+        });
+      }
+    });
+
+    toast.success("Pagamento processado com sucesso!");
     setIsDialogOpen(false);
+    setSelectedReceivables([]);
   };
 
-  // Filter receivables by search term and status
+  const handleToggleSelect = (receivableId: string) => {
+    setSelectedReceivables(prev => 
+      prev.includes(receivableId)
+        ? prev.filter(id => id !== receivableId)
+        : [...prev, receivableId]
+    );
+  };
+
+  const handleToggleSelectAll = () => {
+    if (selectedReceivables.length === filteredReceivables.length) {
+      setSelectedReceivables([]);
+    } else {
+      setSelectedReceivables(filteredReceivables.map(r => r.id));
+    }
+  };
+
+  // Filter receivables
   const filteredReceivables = receivables.filter((receivable) => {
     const customer = customers.find((c) => c.id === receivable.customerId);
     const customerName = customer ? customer.name.toLowerCase() : "";
     
-    // Check if receivable matches search term
     const matchesSearch = 
       customerName.includes(searchTerm.toLowerCase()) ||
       new Date(receivable.dueDate).toLocaleDateString("pt-BR").includes(searchTerm);
     
-    // Check if receivable matches status filter
     let matchesStatus = true;
     if (statusFilter === "pending") {
       matchesStatus = receivable.status === "pending";
@@ -96,7 +157,7 @@ const Receivables = () => {
     
     return matchesSearch && matchesStatus;
   });
-  
+
   const getStatusIcon = (status: string, dueDate: string) => {
     if (status === "paid") {
       return <Check className="h-4 w-4 text-green-600" />;
@@ -160,55 +221,76 @@ const Receivables = () => {
         </Card>
       </div>
 
-      <div className="flex flex-col gap-4 sm:flex-row">
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-          <Input
-            placeholder="Buscar por cliente ou data..."
-            className="pl-8"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+      <div className="flex flex-col gap-4 sm:flex-row justify-between">
+        <div className="flex flex-1 gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+            <Input
+              placeholder="Buscar por cliente ou data..."
+              className="pl-8"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          <Select
+            value={statusFilter}
+            onValueChange={(value) => setStatusFilter(value)}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filtrar por status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="pending">Pendentes</SelectItem>
+              <SelectItem value="paid">Pagos</SelectItem>
+              <SelectItem value="overdue">Atrasados</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
-        <Select
-          value={statusFilter}
-          onValueChange={(value) => setStatusFilter(value)}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filtrar por status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="pending">Pendentes</SelectItem>
-            <SelectItem value="paid">Pagos</SelectItem>
-            <SelectItem value="overdue">Atrasados</SelectItem>
-          </SelectContent>
-        </Select>
+        {selectedReceivables.length > 0 && (
+          <Button 
+            onClick={() => setIsDialogOpen(true)}
+            className="shrink-0"
+          >
+            Processar {selectedReceivables.length} título(s)
+          </Button>
+        )}
       </div>
 
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[30px]">
+                <Checkbox
+                  checked={selectedReceivables.length === filteredReceivables.length}
+                  onCheckedChange={handleToggleSelectAll}
+                />
+              </TableHead>
               <TableHead>Cliente</TableHead>
               <TableHead>Vencimento</TableHead>
               <TableHead className="text-right">Valor</TableHead>
               <TableHead className="text-center">Status</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredReceivables.length > 0 ? (
               filteredReceivables.map((receivable) => {
-                const customer = customers.find(
-                  (c) => c.id === receivable.customerId
-                );
-                
+                const customer = customers.find((c) => c.id === receivable.customerId);
                 const isPastDue = receivable.status === "pending" && new Date(receivable.dueDate) < new Date();
                 
                 return (
                   <TableRow key={receivable.id}>
+                    <TableCell>
+                      {receivable.status === "pending" && (
+                        <Checkbox
+                          checked={selectedReceivables.includes(receivable.id)}
+                          onCheckedChange={() => handleToggleSelect(receivable.id)}
+                        />
+                      )}
+                    </TableCell>
                     <TableCell className="font-medium">
                       {customer?.name || "Cliente não encontrado"}
                     </TableCell>
@@ -228,15 +310,6 @@ const Receivables = () => {
                         <span>{getStatusText(receivable.status, receivable.dueDate)}</span>
                       </span>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleOpenDetailDialog(receivable)}
-                      >
-                        {receivable.status === "paid" ? "Detalhes" : "Receber"}
-                      </Button>
-                    </TableCell>
                   </TableRow>
                 );
               })
@@ -253,87 +326,13 @@ const Receivables = () => {
         </Table>
       </div>
 
-      {currentReceivable && (
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {currentReceivable.status === "paid"
-                  ? "Detalhes do Pagamento"
-                  : "Receber Pagamento"}
-              </DialogTitle>
-            </DialogHeader>
-
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Cliente</p>
-                  <p className="text-lg font-medium">
-                    {customers.find((c) => c.id === currentReceivable.customerId)
-                      ?.name || "Cliente não encontrado"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Valor</p>
-                  <p className="text-lg font-medium">
-                    <FormatCurrency value={currentReceivable.amount} />
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Vencimento</p>
-                  <p className="text-base">
-                    {new Date(
-                      currentReceivable.dueDate
-                    ).toLocaleDateString("pt-BR")}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Status</p>
-                  <span
-                    className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${
-                      getStatusClass(currentReceivable.status, currentReceivable.dueDate)
-                    }`}
-                  >
-                    {getStatusIcon(currentReceivable.status, currentReceivable.dueDate)}
-                    <span>{getStatusText(currentReceivable.status, currentReceivable.dueDate)}</span>
-                  </span>
-                </div>
-              </div>
-
-              {currentReceivable.status === "paid" && currentReceivable.paymentDate && (
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Data de Pagamento</p>
-                  <p className="text-base">
-                    {new Date(
-                      currentReceivable.paymentDate
-                    ).toLocaleDateString("pt-BR")}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setIsDialogOpen(false)}
-              >
-                Fechar
-              </Button>
-              {currentReceivable.status !== "paid" && (
-                <Button 
-                  className="bg-primary-400 hover:bg-primary-500"
-                  onClick={handleMarkAsPaid}
-                >
-                  Marcar como Pago
-                </Button>
-              )}
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <ReceivableDialog
+          selectedReceivables={receivables.filter(r => selectedReceivables.includes(r.id))}
+          onConfirmPayment={handleBatchPayment}
+          onClose={() => setIsDialogOpen(false)}
+        />
+      </Dialog>
     </div>
   );
 };
