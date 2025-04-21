@@ -1,12 +1,12 @@
 
 import React, { useState } from "react";
-import { DialogProps, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FormatCurrency } from "./FormatCurrency";
 
-interface ReceivablePaymentProps extends DialogProps {
+interface ReceivablePaymentProps {
   selectedReceivables: any[];
   onConfirmPayment: (paymentAmount: number, newDueDate?: string, applyDiscount?: boolean, discountValue?: number, discountType?: 'percentage' | 'fixed') => void;
   onClose: () => void;

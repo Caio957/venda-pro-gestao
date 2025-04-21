@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useAppContext } from "@/contexts/AppContext";
 import { FormatCurrency } from "@/components/FormatCurrency";
@@ -30,9 +31,10 @@ import { Search, Check, Clock, AlertCircle } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ReceivableDialog } from "@/components/ReceivableDialog";
 import { toast } from "sonner";
+import { generateId } from "@/utils/generateId";
 
 const Receivables = () => {
-  const { receivables, customers, updateReceivable } = useAppContext();
+  const { receivables, customers, updateReceivable, addReceivable } = useAppContext();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -187,6 +189,22 @@ const Receivables = () => {
     return isPastDue ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800";
   };
 
+  const handleToggleSelect = (receivableId: string) => {
+    setSelectedReceivables(prev => 
+      prev.includes(receivableId)
+        ? prev.filter(id => id !== receivableId)
+        : [...prev, receivableId]
+    );
+  };
+
+  const handleToggleSelectAll = () => {
+    if (selectedReceivables.length === filteredReceivables.length) {
+      setSelectedReceivables([]);
+    } else {
+      setSelectedReceivables(filteredReceivables.map(r => r.id));
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -265,7 +283,7 @@ const Receivables = () => {
             <TableRow>
               <TableHead className="w-[30px]">
                 <Checkbox
-                  checked={selectedReceivables.length === filteredReceivables.length}
+                  checked={selectedReceivables.length === filteredReceivables.length && filteredReceivables.length > 0}
                   onCheckedChange={handleToggleSelectAll}
                 />
               </TableHead>
