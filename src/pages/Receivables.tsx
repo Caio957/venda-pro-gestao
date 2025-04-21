@@ -1,6 +1,5 @@
-
 import React, { useState } from "react";
-import { useAppContext } from "@/contexts/AppContext";
+import { useAppContext, PaymentStatus } from "@/contexts/AppContext";
 import { FormatCurrency } from "@/components/FormatCurrency";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -59,7 +58,6 @@ const Receivables = () => {
     const receivable = receivables.find(r => r.id === receivableId);
     if (!receivable) return [];
     
-    // @ts-ignore - We'll be extending the receivable type to include paymentHistory
     return receivable.paymentHistory || [];
   };
 
@@ -98,13 +96,13 @@ const Receivables = () => {
           {
             date: paymentDate,
             amount: originalAmount,
-            type: 'payment'
+            type: 'payment' as const
           }
         ];
         
         updateReceivable({
           ...receivable,
-          status: "paid",
+          status: "paid" as PaymentStatus,
           paymentDate,
           paymentHistory: newPaymentHistory,
           originalAmount: receivable.originalAmount || receivable.amount, // Store original amount if not already stored
@@ -126,7 +124,7 @@ const Receivables = () => {
           {
             date: paymentDate,
             amount: remainingPayment,
-            type: 'payment'
+            type: 'payment' as const
           }
         ];
         
@@ -179,7 +177,7 @@ const Receivables = () => {
       {
         date: new Date().toISOString(),
         amount: lastPayment.amount,
-        type: 'reversal',
+        type: 'reversal' as const,
         reversedPaymentDate: lastPayment.date
       }
     ];
@@ -188,7 +186,7 @@ const Receivables = () => {
     const updatedReceivable = {
       ...receivable,
       amount: receivable.amount + lastPayment.amount,
-      status: "pending",
+      status: "pending" as PaymentStatus,
       paymentHistory: newPaymentHistory,
       totalPaid: Math.max(0, (receivable.totalPaid || 0) - lastPayment.amount)
     };
