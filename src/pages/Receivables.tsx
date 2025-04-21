@@ -189,22 +189,6 @@ const Receivables = () => {
     return isPastDue ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800";
   };
 
-  const handleToggleSelect = (receivableId: string) => {
-    setSelectedReceivables(prev => 
-      prev.includes(receivableId)
-        ? prev.filter(id => id !== receivableId)
-        : [...prev, receivableId]
-    );
-  };
-
-  const handleToggleSelectAll = () => {
-    if (selectedReceivables.length === filteredReceivables.length) {
-      setSelectedReceivables([]);
-    } else {
-      setSelectedReceivables(filteredReceivables.map(r => r.id));
-    }
-  };
-
   return (
     <div className="space-y-6">
       <div>
