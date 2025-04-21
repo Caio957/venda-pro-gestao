@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { toast } from "sonner";
 
@@ -51,6 +50,18 @@ export type Receivable = {
   dueDate: string;
   status: PaymentStatus;
   paymentDate?: string;
+  originalAmount?: number;
+  totalPaid?: number;
+  paymentHistory?: PaymentHistoryEntry[];
+  installmentNumber?: number;
+  totalInstallments?: number;
+};
+
+export type PaymentHistoryEntry = {
+  date: string;
+  amount: number;
+  type: 'payment' | 'reversal';
+  reversedPaymentDate?: string;
 };
 
 type AppContextType = {

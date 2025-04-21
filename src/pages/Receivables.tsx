@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useAppContext } from "@/contexts/AppContext";
 import { FormatCurrency } from "@/components/FormatCurrency";
@@ -26,7 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Search, Check, Clock, AlertCircle } from "lucide-react";
+import { Search, Check, Clock, AlertCircle, Receipt } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ReceivableDialog } from "@/components/ReceivableDialog";
 import { toast } from "sonner";
@@ -38,6 +39,7 @@ const Receivables = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedReceivables, setSelectedReceivables] = useState<string[]>([]);
+  const [isReverseMode, setIsReverseMode] = useState(false);
   
   const todayDate = new Date().toISOString().split("T")[0];
   
@@ -50,6 +52,16 @@ const Receivables = () => {
     const isToday = r.paymentDate && new Date(r.paymentDate).toISOString().split("T")[0] === todayDate;
     return r.status === "paid" && isToday;
   }).reduce((acc, r) => acc + r.amount, 0);
+
+  // Calculate payment and reversals history
+  const getPaymentHistory = (receivableId: string) => {
+    // We'll check if this receivable has paymentHistory in its metadata
+    const receivable = receivables.find(r => r.id === receivableId);
+    if (!receivable) return [];
+    
+    // @ts-ignore - We'll be extending the receivable type to include paymentHistory
+    return receivable.paymentHistory || [];
+  };
 
   const handleBatchPayment = (
     paymentAmount: number,
@@ -73,18 +85,58 @@ const Receivables = () => {
 
     selected.forEach(receivable => {
       if (remainingPayment >= receivable.amount) {
+        // Full payment
+        const originalAmount = receivable.amount;
+        const paymentDate = new Date().toISOString();
+        
+        // Get existing payment history or initialize new array
+        const paymentHistory = receivable.paymentHistory || [];
+        
+        // Add this payment to history
+        const newPaymentHistory = [
+          ...paymentHistory,
+          {
+            date: paymentDate,
+            amount: originalAmount,
+            type: 'payment'
+          }
+        ];
+        
         updateReceivable({
           ...receivable,
           status: "paid",
-          paymentDate: new Date().toISOString(),
+          paymentDate,
+          paymentHistory: newPaymentHistory,
+          originalAmount: receivable.originalAmount || receivable.amount, // Store original amount if not already stored
+          totalPaid: (receivable.totalPaid || 0) + originalAmount
         });
-        remainingPayment -= receivable.amount;
+        
+        remainingPayment -= originalAmount;
       } else if (remainingPayment > 0) {
+        // Partial payment
         const newAmount = receivable.amount - remainingPayment;
+        const paymentDate = new Date().toISOString();
+        
+        // Get existing payment history or initialize new array
+        const paymentHistory = receivable.paymentHistory || [];
+        
+        // Add this payment to history
+        const newPaymentHistory = [
+          ...paymentHistory,
+          {
+            date: paymentDate,
+            amount: remainingPayment,
+            type: 'payment'
+          }
+        ];
+        
         updateReceivable({
           ...receivable,
           amount: newAmount,
           dueDate: newDueDate || receivable.dueDate,
+          originalAmount: receivable.originalAmount || receivable.amount, // Store original amount if not already stored
+          paymentHistory: newPaymentHistory,
+          totalPaid: (receivable.totalPaid || 0) + remainingPayment
         });
         
         remainingPayment = 0;
@@ -99,6 +151,55 @@ const Receivables = () => {
     toast.success("Pagamento processado com sucesso!");
     setIsDialogOpen(false);
     setSelectedReceivables([]);
+  };
+
+  const handleReversal = (receivableId: string) => {
+    const receivable = receivables.find(r => r.id === receivableId);
+    if (!receivable) {
+      toast.error("Título não encontrado");
+      return;
+    }
+    
+    // Get payment history
+    const paymentHistory = receivable.paymentHistory || [];
+    
+    // Find the last payment
+    const lastPayments = [...paymentHistory].filter(p => p.type === 'payment').reverse();
+    
+    if (lastPayments.length === 0) {
+      toast.error("Não há pagamentos para estornar");
+      return;
+    }
+    
+    const lastPayment = lastPayments[0];
+    
+    // Add reversal to payment history
+    const newPaymentHistory = [
+      ...paymentHistory,
+      {
+        date: new Date().toISOString(),
+        amount: lastPayment.amount,
+        type: 'reversal',
+        reversedPaymentDate: lastPayment.date
+      }
+    ];
+    
+    // Update the receivable
+    const updatedReceivable = {
+      ...receivable,
+      amount: receivable.amount + lastPayment.amount,
+      status: "pending",
+      paymentHistory: newPaymentHistory,
+      totalPaid: Math.max(0, (receivable.totalPaid || 0) - lastPayment.amount)
+    };
+    
+    // If this was fully paid before and now it's not, remove payment date
+    if (receivable.status === "paid" && updatedReceivable.status === "pending") {
+      delete updatedReceivable.paymentDate;
+    }
+    
+    updateReceivable(updatedReceivable);
+    toast.success("Estorno processado com sucesso!");
   };
 
   const handleToggleSelect = (receivableId: string) => {
@@ -228,14 +329,24 @@ const Receivables = () => {
           </Select>
         </div>
 
-        {selectedReceivables.length > 0 && (
-          <Button 
-            onClick={() => setIsDialogOpen(true)}
-            className="shrink-0"
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setIsReverseMode(!isReverseMode)}
+            className={isReverseMode ? "bg-amber-100" : ""}
           >
-            Processar {selectedReceivables.length} título(s)
+            {isReverseMode ? "Cancelar Estorno" : "Modo Estorno"}
           </Button>
-        )}
+
+          {selectedReceivables.length > 0 && !isReverseMode && (
+            <Button 
+              onClick={() => setIsDialogOpen(true)}
+              className="shrink-0"
+            >
+              Processar {selectedReceivables.length} título(s)
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="rounded-md border">
@@ -250,8 +361,12 @@ const Receivables = () => {
               </TableHead>
               <TableHead>Cliente</TableHead>
               <TableHead>Vencimento</TableHead>
-              <TableHead className="text-right">Valor</TableHead>
+              <TableHead className="text-right">Valor Restante</TableHead>
+              <TableHead className="text-right">Valor Recebido</TableHead>
+              <TableHead className="text-right">Valor Total</TableHead>
+              <TableHead className="text-center">Parcelas</TableHead>
               <TableHead className="text-center">Status</TableHead>
+              <TableHead className="text-center">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -260,10 +375,17 @@ const Receivables = () => {
                 const customer = customers.find((c) => c.id === receivable.customerId);
                 const isPastDue = receivable.status === "pending" && new Date(receivable.dueDate) < new Date();
                 
+                // Calculate values for the new columns
+                const totalPaid = receivable.totalPaid || 0;
+                const originalAmount = receivable.originalAmount || receivable.amount + totalPaid;
+                const remainingAmount = receivable.amount;
+                const installmentNumber = receivable.installmentNumber || 1;
+                const totalInstallments = receivable.totalInstallments || 1;
+                
                 return (
                   <TableRow key={receivable.id}>
                     <TableCell>
-                      {receivable.status === "pending" && (
+                      {receivable.status === "pending" && !isReverseMode && (
                         <Checkbox
                           checked={selectedReceivables.includes(receivable.id)}
                           onCheckedChange={() => handleToggleSelect(receivable.id)}
@@ -277,7 +399,16 @@ const Receivables = () => {
                       {new Date(receivable.dueDate).toLocaleDateString("pt-BR")}
                     </TableCell>
                     <TableCell className="text-right">
-                      <FormatCurrency value={receivable.amount} />
+                      <FormatCurrency value={remainingAmount} />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <FormatCurrency value={totalPaid} />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <FormatCurrency value={originalAmount} />
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {installmentNumber}/{totalInstallments}
                     </TableCell>
                     <TableCell className="text-center">
                       <span
@@ -289,12 +420,24 @@ const Receivables = () => {
                         <span>{getStatusText(receivable.status, receivable.dueDate)}</span>
                       </span>
                     </TableCell>
+                    <TableCell>
+                      {isReverseMode && (receivable.totalPaid || 0) > 0 && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleReversal(receivable.id)}
+                          className="text-amber-600"
+                        >
+                          <Receipt className="h-4 w-4 mr-1" /> Estornar
+                        </Button>
+                      )}
+                    </TableCell>
                   </TableRow>
                 );
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
+                <TableCell colSpan={9} className="h-24 text-center">
                   {searchTerm || statusFilter !== "all"
                     ? "Nenhuma conta encontrada com os filtros aplicados"
                     : "Nenhuma conta a receber registrada"}
