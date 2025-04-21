@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -61,6 +62,7 @@ const Sales = () => {
     paymentMethod: PaymentMethod;
     paymentStatus: PaymentStatus;
     installments?: number;
+    installmentInterval?: number;
     dueDate?: string;
   }>({
     customerId: "",
@@ -139,6 +141,7 @@ const Sales = () => {
       paymentMethod: sale.paymentMethod,
       paymentStatus: sale.paymentStatus,
       installments: sale.installments,
+      installmentInterval: sale.installmentInterval || 30,
       dueDate: sale.dueDate ? new Date(sale.dueDate).toISOString().split("T")[0] : undefined,
     });
     setSelectedProduct({
@@ -267,6 +270,14 @@ const Sales = () => {
     setCurrentSale({
       ...currentSale,
       installments: value,
+    });
+  };
+
+  const handleInstallmentIntervalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value, 10) || 30;
+    setCurrentSale({
+      ...currentSale,
+      installmentInterval: value,
     });
   };
 
@@ -452,6 +463,11 @@ const Sales = () => {
             <DialogTitle>
               {dialogMode === "add" ? "Nova Venda" : "Editar Venda"}
             </DialogTitle>
+            <DialogDescription>
+              {dialogMode === "add" 
+                ? "Registre uma nova venda preenchendo os campos abaixo." 
+                : "Edite os detalhes da venda."}
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit}>
             <div className="grid gap-6 py-4">
@@ -637,12 +653,33 @@ const Sales = () => {
                       </div>
                     )}
                     
+                    {/* Add installment interval field for installment payments */}
+                    {currentSale.paymentMethod === "installment" && (
+                      <div className="grid gap-2 sm:col-span-2">
+                        <label htmlFor="installmentInterval" className="text-sm font-medium">
+                          Intervalo entre parcelas (dias)
+                        </label>
+                        <Input
+                          id="installmentInterval"
+                          name="installmentInterval"
+                          type="number"
+                          min="1"
+                          value={currentSale.installmentInterval || 30}
+                          onChange={handleInstallmentIntervalChange}
+                          placeholder="30"
+                        />
+                        <p className="text-xs text-gray-500">
+                          O intervalo padrão é de 30 dias entre cada parcela.
+                        </p>
+                      </div>
+                    )}
+                    
                     {/* Show due date for any payment method that's not immediate */}
                     {(currentSale.paymentMethod === "bank_transfer" || 
                       currentSale.paymentMethod === "installment") && (
                       <div className="grid gap-2 sm:col-span-2">
                         <label htmlFor="dueDate" className="text-sm font-medium">
-                          Data de Vencimento
+                          Data de Vencimento (1ª parcela)
                         </label>
                         <Input
                           id="dueDate"

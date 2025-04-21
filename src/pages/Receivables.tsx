@@ -26,7 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Search, Check, Clock, AlertCircle, Receipt } from "lucide-react";
+import { Search, Check, Clock, AlertCircle, Receipt, ChevronDown, ChevronRight } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ReceivableDialog } from "@/components/ReceivableDialog";
 import { toast } from "sonner";
@@ -38,8 +38,7 @@ const Receivables = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedReceivables, setSelectedReceivables] = useState<string[]>([]);
   const [isReverseMode, setIsReverseMode] = useState(false);
-  const expandedReceivableIds = React.useState<string[]>([]);
-  const [expandedReceivables, setExpandedReceivables] = expandedReceivableIds;
+  const [expandedReceivables, setExpandedReceivables] = useState<string[]>([]);
 
   const todayDate = new Date().toISOString().split("T")[0];
   
@@ -236,6 +235,38 @@ const Receivables = () => {
     return matchesSearch && matchesStatus;
   });
 
+  const toggleReceivableExpansion = (receivableId: string) => {
+    setExpandedReceivables(prev => 
+      prev.includes(receivableId)
+        ? prev.filter(id => id !== receivableId)
+        : [...prev, receivableId]
+    );
+  };
+
+  // Group receivables by saleId for better visualization of installments
+  const groupedReceivables = filteredReceivables.reduce((groups, receivable) => {
+    // Only group receivables that are part of installment plans
+    if (receivable.totalInstallments && receivable.totalInstallments > 1) {
+      if (!groups[receivable.saleId]) {
+        groups[receivable.saleId] = [];
+      }
+      groups[receivable.saleId].push(receivable);
+    } else {
+      // For non-installment receivables, use the ID as the group key
+      groups[receivable.id] = [receivable];
+    }
+    return groups;
+  }, {} as Record<string, Receivable[]>);
+
+  // Sort installments within each group
+  Object.keys(groupedReceivables).forEach(saleId => {
+    if (groupedReceivables[saleId].length > 1) {
+      groupedReceivables[saleId].sort((a, b) => 
+        (a.installmentNumber || 0) - (b.installmentNumber || 0)
+      );
+    }
+  });
+
   const getStatusIcon = (status: string, dueDate: string) => {
     if (status === "paid") {
       return <Check className="h-4 w-4 text-green-600" />;
@@ -265,61 +296,6 @@ const Receivables = () => {
     return isPastDue ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800";
   };
 
-  const toggleReceivableExpansion = (receivableId: string) => {
-    setExpandedReceivables(prev => 
-      prev.includes(receivableId)
-        ? prev.filter(id => id !== receivableId)
-        : [...prev, receivableId]
-    );
-  };
-
-  const renderInstallments = (receivable: Receivable) => {
-    const totalInstallments = receivable.totalInstallments || 1;
-    const installments: Receivable[] = [];
-
-    if (!receivable.totalInstallments || receivable.totalInstallments <= 1) {
-      return null;
-    }
-
-    for (let i = 1; i <= totalInstallments; i++) {
-      const installmentAmount = receivable.amount / totalInstallments;
-      const installmentDueDate = new Date(receivable.dueDate);
-      installmentDueDate.setMonth(installmentDueDate.getMonth() + (i - 1));
-
-      installments.push({
-        ...receivable,
-        amount: installmentAmount,
-        installmentNumber: i,
-        dueDate: installmentDueDate.toISOString()
-      });
-    }
-
-    return (
-      <>
-        {installments.map((installment, index) => (
-          <TableRow 
-            key={`${receivable.id}-installment-${index + 1}`} 
-            className="bg-gray-50 text-sm"
-          >
-            <TableCell colSpan={9}>
-              <div className="flex justify-between items-center">
-                <span>
-                  Parcela {installment.installmentNumber}/{totalInstallments}
-                </span>
-                <span>
-                  <FormatCurrency value={installment.amount} />
-                </span>
-                <span>
-                  {new Date(installment.dueDate).toLocaleDateString("pt-BR")}
-                </span>
-              </div>
-            </TableCell>
-          </TableRow>
-        ))}
-      </>
-    );
-  };
-
   return (
     <div className="space-y-6">
       <div>
@@ -332,7 +308,7 @@ const Receivables = () => {
           <CardHeader className="pb-2">
             <CardDescription>Total a Receber</CardDescription>
             <CardTitle>
-              <FormatCurrency value={totalReceivables} />
+              <FormatCurrency value={receivables.filter(r => r.status === "pending").reduce((acc, r) => acc + r.amount, 0)} />
             </CardTitle>
           </CardHeader>
         </Card>
@@ -340,7 +316,9 @@ const Receivables = () => {
           <CardHeader className="pb-2">
             <CardDescription>Total Atrasado</CardDescription>
             <CardTitle className="text-red-600">
-              <FormatCurrency value={overdueReceivables} />
+              <FormatCurrency value={receivables.filter(r => {
+                return r.status === "pending" && new Date(r.dueDate) < new Date();
+              }).reduce((acc, r) => acc + r.amount, 0)} />
             </CardTitle>
           </CardHeader>
         </Card>
@@ -348,7 +326,10 @@ const Receivables = () => {
           <CardHeader className="pb-2">
             <CardDescription>Recebido Hoje</CardDescription>
             <CardTitle className="text-green-600">
-              <FormatCurrency value={receivedToday} />
+              <FormatCurrency value={receivables.filter(r => {
+                const isToday = r.paymentDate && new Date(r.paymentDate).toISOString().split("T")[0] === new Date().toISOString().split("T")[0];
+                return r.status === "paid" && isToday;
+              }).reduce((acc, r) => acc + r.amount, 0)} />
             </CardTitle>
           </CardHeader>
         </Card>
@@ -423,50 +404,72 @@ const Receivables = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredReceivables.length > 0 ? (
-              filteredReceivables.map((receivable) => {
-                const customer = customers.find((c) => c.id === receivable.customerId);
-                const isPastDue = receivable.status === "pending" && new Date(receivable.dueDate) < new Date();
+            {Object.keys(groupedReceivables).length > 0 ? (
+              Object.entries(groupedReceivables).map(([groupId, group]) => {
+                // First receivable in group is used as the main display row
+                const mainReceivable = group[0];
+                const customer = customers.find((c) => c.id === mainReceivable.customerId);
+                const isInstallmentPlan = group.length > 1;
+                const isExpanded = expandedReceivables.includes(groupId);
                 
-                const totalPaid = receivable.totalPaid || 0;
-                const originalAmount = receivable.originalAmount || receivable.amount + totalPaid;
-                const remainingAmount = receivable.amount;
-                const installmentNumber = receivable.installmentNumber || 1;
-                const totalInstallments = receivable.totalInstallments || 1;
+                const totalPaid = mainReceivable.totalPaid || 0;
+                const originalAmount = mainReceivable.originalAmount || mainReceivable.amount + totalPaid;
+                const remainingAmount = mainReceivable.amount;
+                const installmentNumber = mainReceivable.installmentNumber || 1;
+                const totalInstallments = mainReceivable.totalInstallments || 1;
                 
                 return (
-                  <>
+                  <React.Fragment key={groupId}>
                     <TableRow 
-                      key={receivable.id}
-                      onClick={() => receivable.totalInstallments && receivable.totalInstallments > 1 
-                        ? toggleReceivableExpansion(receivable.id) 
-                        : null}
-                      className={receivable.totalInstallments && receivable.totalInstallments > 1 
-                        ? "cursor-pointer hover:bg-gray-100" 
-                        : ""}
+                      onClick={() => isInstallmentPlan ? toggleReceivableExpansion(groupId) : null}
+                      className={isInstallmentPlan ? "cursor-pointer hover:bg-gray-100" : ""}
                     >
                       <TableCell>
-                        {receivable.status === "pending" && !isReverseMode && (
+                        {mainReceivable.status === "pending" && !isReverseMode && (
                           <Checkbox
-                            checked={selectedReceivables.includes(receivable.id)}
-                            onCheckedChange={() => handleToggleSelect(receivable.id)}
+                            checked={selectedReceivables.includes(mainReceivable.id)}
+                            onCheckedChange={() => handleToggleSelect(mainReceivable.id)}
                           />
                         )}
                       </TableCell>
                       <TableCell className="font-medium">
-                        {customer?.name || "Cliente não encontrado"}
+                        <div className="flex items-center gap-2">
+                          {isInstallmentPlan && (
+                            isExpanded ? 
+                              <ChevronDown className="h-4 w-4 text-gray-400" /> : 
+                              <ChevronRight className="h-4 w-4 text-gray-400" />
+                          )}
+                          <span>{customer?.name || "Cliente não encontrado"}</span>
+                          {isInstallmentPlan && (
+                            <span className="text-xs text-gray-500">
+                              (Parcelado em {totalInstallments}x)
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
-                        {new Date(receivable.dueDate).toLocaleDateString("pt-BR")}
+                        {new Date(mainReceivable.dueDate).toLocaleDateString("pt-BR")}
                       </TableCell>
                       <TableCell className="text-right">
-                        <FormatCurrency value={remainingAmount} />
+                        {isInstallmentPlan ? (
+                          <FormatCurrency value={group.reduce((sum, r) => r.status === 'pending' ? sum + r.amount : sum, 0)} />
+                        ) : (
+                          <FormatCurrency value={remainingAmount} />
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <FormatCurrency value={totalPaid} />
+                        {isInstallmentPlan ? (
+                          <FormatCurrency value={group.reduce((sum, r) => r.totalPaid || 0, 0)} />
+                        ) : (
+                          <FormatCurrency value={totalPaid} />
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <FormatCurrency value={originalAmount} />
+                        {isInstallmentPlan ? (
+                          <FormatCurrency value={group.reduce((sum, r) => sum + (r.originalAmount || r.amount + (r.totalPaid || 0)), 0)} />
+                        ) : (
+                          <FormatCurrency value={originalAmount} />
+                        )}
                       </TableCell>
                       <TableCell className="text-center">
                         {installmentNumber}/{totalInstallments}
@@ -474,19 +477,19 @@ const Receivables = () => {
                       <TableCell className="text-center">
                         <span
                           className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${
-                            getStatusClass(receivable.status, receivable.dueDate)
+                            getStatusClass(mainReceivable.status, mainReceivable.dueDate)
                           }`}
                         >
-                          {getStatusIcon(receivable.status, receivable.dueDate)}
-                          <span>{getStatusText(receivable.status, receivable.dueDate)}</span>
+                          {getStatusIcon(mainReceivable.status, mainReceivable.dueDate)}
+                          <span>{getStatusText(mainReceivable.status, mainReceivable.dueDate)}</span>
                         </span>
                       </TableCell>
                       <TableCell>
-                        {isReverseMode && (receivable.totalPaid || 0) > 0 && (
+                        {isReverseMode && (mainReceivable.totalPaid || 0) > 0 && (
                           <Button 
                             variant="ghost" 
                             size="sm" 
-                            onClick={() => handleReversal(receivable.id)}
+                            onClick={() => handleReversal(mainReceivable.id)}
                             className="text-amber-600"
                           >
                             <Receipt className="h-4 w-4 mr-1" /> Estornar
@@ -494,9 +497,64 @@ const Receivables = () => {
                         )}
                       </TableCell>
                     </TableRow>
-                    {expandedReceivables.includes(receivable.id) && 
-                      renderInstallments(receivable)}
-                  </>
+                    
+                    {/* Show installment details when expanded */}
+                    {isExpanded && isInstallmentPlan && group.map((installment, index) => (
+                      <TableRow 
+                        key={`${groupId}-installment-${installment.id}`} 
+                        className="bg-gray-50 text-sm"
+                      >
+                        <TableCell>
+                          {installment.status === "pending" && !isReverseMode && (
+                            <Checkbox
+                              checked={selectedReceivables.includes(installment.id)}
+                              onCheckedChange={() => handleToggleSelect(installment.id)}
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell className="pl-8">
+                          Parcela {installment.installmentNumber}/{installment.totalInstallments}
+                        </TableCell>
+                        <TableCell>
+                          {new Date(installment.dueDate).toLocaleDateString("pt-BR")}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <FormatCurrency value={installment.amount} />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <FormatCurrency value={installment.totalPaid || 0} />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <FormatCurrency value={(installment.originalAmount || installment.amount + (installment.totalPaid || 0))} />
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {installment.installmentNumber}/{installment.totalInstallments}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${
+                              getStatusClass(installment.status, installment.dueDate)
+                            }`}
+                          >
+                            {getStatusIcon(installment.status, installment.dueDate)}
+                            <span>{getStatusText(installment.status, installment.dueDate)}</span>
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {isReverseMode && (installment.totalPaid || 0) > 0 && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => handleReversal(installment.id)}
+                              className="text-amber-600"
+                            >
+                              <Receipt className="h-4 w-4 mr-1" /> Estornar
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </React.Fragment>
                 );
               })
             ) : (

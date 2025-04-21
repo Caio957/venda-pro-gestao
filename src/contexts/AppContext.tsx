@@ -39,6 +39,7 @@ export type Sale = {
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
   installments?: number;
+  installmentInterval?: number;
   dueDate?: string;
 };
 
@@ -249,18 +250,55 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
     
-    // Create receivable for non-cash sales that aren't fully paid
+    // Create receivables for sale
     if (sale.paymentMethod !== 'cash' && sale.paymentStatus === 'pending') {
-      const newReceivable: Omit<Receivable, "id"> = {
-        saleId: newSale.id,
-        customerId: sale.customerId,
-        amount: sale.total,
-        dueDate: sale.dueDate || new Date(Date.now() + 30*24*60*60*1000).toISOString(), // Default 30 days
-        status: 'pending',
-      };
-      
-      const receivableWithId = { ...newReceivable, id: generateId() };
-      setReceivables([...receivables, receivableWithId]);
+      // Handle installment payments
+      if (sale.paymentMethod === 'installment' && sale.installments && sale.installments > 1) {
+        const installmentAmount = Number((sale.total / sale.installments).toFixed(2));
+        const remainingAmount = sale.total - (installmentAmount * (sale.installments - 1));
+        const intervalDays = sale.installmentInterval || 30;
+        
+        // Get the base due date
+        let dueDate = sale.dueDate 
+          ? new Date(sale.dueDate) 
+          : new Date(Date.now() + intervalDays * 24 * 60 * 60 * 1000);
+          
+        // Create receivable for each installment
+        for (let i = 0; i < sale.installments; i++) {
+          const installmentDueDate = new Date(dueDate);
+          installmentDueDate.setDate(installmentDueDate.getDate() + (i * intervalDays));
+          
+          // The last installment gets any remaining cents to avoid rounding issues
+          const amount = i === sale.installments - 1 ? remainingAmount : installmentAmount;
+          
+          const newReceivable: Receivable = {
+            id: generateId(),
+            saleId: newSale.id,
+            customerId: sale.customerId,
+            amount: amount,
+            dueDate: installmentDueDate.toISOString(),
+            status: 'pending',
+            installmentNumber: i + 1,
+            totalInstallments: sale.installments
+          };
+          
+          setReceivables(prev => [...prev, newReceivable]);
+        }
+      } else {
+        // Non-installment pending payment (single receivable)
+        const newReceivable: Omit<Receivable, "id"> = {
+          saleId: newSale.id,
+          customerId: sale.customerId,
+          amount: sale.total,
+          dueDate: sale.dueDate || new Date(Date.now() + 30*24*60*60*1000).toISOString(),
+          status: 'pending',
+          installmentNumber: 1,
+          totalInstallments: 1
+        };
+        
+        const receivableWithId = { ...newReceivable, id: generateId() };
+        setReceivables([...receivables, receivableWithId]);
+      }
     }
     
     setSales([...sales, newSale]);
@@ -317,27 +355,74 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setProducts(updatedProducts);
     
     // Update or create receivable if needed
-    const existingReceivable = receivables.find(r => r.saleId === sale.id);
+    const existingReceivables = receivables.filter(r => r.saleId === sale.id);
     
-    if (sale.paymentStatus === 'paid' && existingReceivable) {
-      // Update existing receivable to paid
-      setReceivables(receivables.map(r => 
-        r.saleId === sale.id ? 
-        { ...r, status: 'paid', paymentDate: new Date().toISOString() } : r
-      ));
-    } 
-    else if (sale.paymentStatus === 'pending' && !existingReceivable && sale.paymentMethod !== 'cash') {
-      // Create new receivable
-      const newReceivable: Receivable = {
-        id: generateId(),
-        saleId: sale.id,
-        customerId: sale.customerId,
-        amount: sale.total,
-        dueDate: sale.dueDate || new Date(Date.now() + 30*24*60*60*1000).toISOString(),
-        status: 'pending',
-      };
-      
-      setReceivables([...receivables, newReceivable]);
+    // Remove old receivables if payment status changed to paid or if method changed
+    if (
+      (sale.paymentStatus === 'paid' && existingReceivables.length > 0) || 
+      (originalSale.paymentMethod !== sale.paymentMethod && existingReceivables.length > 0)
+    ) {
+      // Mark existing receivables as paid if status changed to paid
+      if (sale.paymentStatus === 'paid') {
+        setReceivables(receivables.map(r => 
+          r.saleId === sale.id ? 
+          { ...r, status: 'paid' as PaymentStatus, paymentDate: new Date().toISOString() } : r
+        ));
+      } else {
+        // Remove existing receivables if payment method changed
+        setReceivables(receivables.filter(r => r.saleId !== sale.id));
+        
+        // Create new receivables based on the updated payment method
+        if (sale.paymentMethod !== 'cash' && sale.paymentStatus === 'pending') {
+          // Handle installment payments
+          if (sale.paymentMethod === 'installment' && sale.installments && sale.installments > 1) {
+            const installmentAmount = Number((sale.total / sale.installments).toFixed(2));
+            const remainingAmount = sale.total - (installmentAmount * (sale.installments - 1));
+            const intervalDays = sale.installmentInterval || 30;
+            
+            // Get the base due date
+            let dueDate = sale.dueDate 
+              ? new Date(sale.dueDate) 
+              : new Date(Date.now() + intervalDays * 24 * 60 * 60 * 1000);
+              
+            // Create receivable for each installment
+            for (let i = 0; i < sale.installments; i++) {
+              const installmentDueDate = new Date(dueDate);
+              installmentDueDate.setDate(installmentDueDate.getDate() + (i * intervalDays));
+              
+              // The last installment gets any remaining cents to avoid rounding issues
+              const amount = i === sale.installments - 1 ? remainingAmount : installmentAmount;
+              
+              const newReceivable: Receivable = {
+                id: generateId(),
+                saleId: sale.id,
+                customerId: sale.customerId,
+                amount: amount,
+                dueDate: installmentDueDate.toISOString(),
+                status: 'pending',
+                installmentNumber: i + 1,
+                totalInstallments: sale.installments
+              };
+              
+              setReceivables(prev => [...prev, newReceivable]);
+            }
+          } else {
+            // Non-installment pending payment (single receivable)
+            const newReceivable: Receivable = {
+              id: generateId(),
+              saleId: sale.id,
+              customerId: sale.customerId,
+              amount: sale.total,
+              dueDate: sale.dueDate || new Date(Date.now() + 30*24*60*60*1000).toISOString(),
+              status: 'pending',
+              installmentNumber: 1,
+              totalInstallments: 1
+            };
+            
+            setReceivables(prev => [...prev, newReceivable]);
+          }
+        }
+      }
     }
     
     toast.success("Venda atualizada com sucesso!");
