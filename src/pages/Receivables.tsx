@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useAppContext } from "@/contexts/AppContext";
 import { FormatCurrency } from "@/components/FormatCurrency";
@@ -40,10 +39,8 @@ const Receivables = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedReceivables, setSelectedReceivables] = useState<string[]>([]);
   
-  // Get today's date in YYYY-MM-DD format
   const todayDate = new Date().toISOString().split("T")[0];
   
-  // Calculate metrics
   const totalReceivables = receivables.filter(r => r.status === "pending").reduce((acc, r) => acc + r.amount, 0);
   const overdueReceivables = receivables.filter(r => {
     const isOverdue = r.status === "pending" && new Date(r.dueDate) < new Date();
@@ -66,7 +63,6 @@ const Receivables = () => {
     
     let remainingPayment = paymentAmount;
     
-    // Calculate final amount considering discount/addition
     if (applyDiscount && discountValue) {
       const adjustmentAmount = discountType === 'percentage' 
         ? totalAmount * (discountValue / 100)
@@ -75,10 +71,8 @@ const Receivables = () => {
       remainingPayment = paymentAmount + (discountValue > 0 ? -adjustmentAmount : Math.abs(adjustmentAmount));
     }
 
-    // Process each selected receivable
     selected.forEach(receivable => {
       if (remainingPayment >= receivable.amount) {
-        // Full payment
         updateReceivable({
           ...receivable,
           status: "paid",
@@ -86,31 +80,23 @@ const Receivables = () => {
         });
         remainingPayment -= receivable.amount;
       } else if (remainingPayment > 0) {
-        // Partial payment
-        const remainingAmount = receivable.amount - remainingPayment;
-        
-        // Create new receivable for remaining amount
-        const newReceivable = {
-          ...receivable,
-          id: generateId(),
-          amount: remainingAmount,
-          dueDate: newDueDate || receivable.dueDate,
-        };
-        
-        // Update original receivable as paid
         updateReceivable({
           ...receivable,
+          amount: receivable.amount - remainingPayment,
+          dueDate: newDueDate || receivable.dueDate,
+        });
+        
+        addReceivable({
+          saleId: receivable.saleId,
+          customerId: receivable.customerId,
           amount: remainingPayment,
+          dueDate: receivable.dueDate,
           status: "paid",
           paymentDate: new Date().toISOString(),
         });
         
-        // Add new receivable for remaining amount
-        addReceivable(newReceivable);
-        
         remainingPayment = 0;
       } else if (newDueDate && new Date(newDueDate) > new Date(receivable.dueDate)) {
-        // Only renegotiate due date
         updateReceivable({
           ...receivable,
           dueDate: newDueDate,
@@ -139,7 +125,6 @@ const Receivables = () => {
     }
   };
 
-  // Filter receivables
   const filteredReceivables = receivables.filter((receivable) => {
     const customer = customers.find((c) => c.id === receivable.customerId);
     const customerName = customer ? customer.name.toLowerCase() : "";
