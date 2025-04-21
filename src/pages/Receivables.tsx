@@ -80,19 +80,11 @@ const Receivables = () => {
         });
         remainingPayment -= receivable.amount;
       } else if (remainingPayment > 0) {
+        const newAmount = receivable.amount - remainingPayment;
         updateReceivable({
           ...receivable,
-          amount: receivable.amount - remainingPayment,
+          amount: newAmount,
           dueDate: newDueDate || receivable.dueDate,
-        });
-        
-        addReceivable({
-          saleId: receivable.saleId,
-          customerId: receivable.customerId,
-          amount: remainingPayment,
-          dueDate: receivable.dueDate,
-          status: "paid",
-          paymentDate: new Date().toISOString(),
         });
         
         remainingPayment = 0;
