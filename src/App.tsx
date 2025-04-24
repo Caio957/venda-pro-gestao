@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -12,6 +11,7 @@ import Products from "./pages/Products";
 import Customers from "./pages/Customers";
 import Sales from "./pages/Sales";
 import Receivables from "./pages/Receivables";
+import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 
 // Create a new QueryClient instance with explicit configuration
@@ -26,28 +26,27 @@ const queryClient = new QueryClient({
 
 const App = () => {
   return (
-    <React.StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <AppProvider>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <AppProvider>
+          <BrowserRouter>
             <Toaster />
             <Sonner />
-            <BrowserRouter>
-              <Layout>
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/products" element={<Products />} />
-                  <Route path="/customers" element={<Customers />} />
-                  <Route path="/sales" element={<Sales />} />
-                  <Route path="/receivables" element={<Receivables />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </Layout>
-            </BrowserRouter>
-          </AppProvider>
-        </TooltipProvider>
-      </QueryClientProvider>
-    </React.StrictMode>
+            <Layout>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/products" element={<Products />} />
+                <Route path="/customers" element={<Customers />} />
+                <Route path="/sales" element={<Sales />} />
+                <Route path="/receivables" element={<Receivables />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Layout>
+          </BrowserRouter>
+        </AppProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
   );
 };
 

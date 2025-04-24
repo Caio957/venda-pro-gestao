@@ -1,8 +1,18 @@
-
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Calendar, Receipt, Book, User, ChartBar } from "lucide-react";
+import {
+  Calendar,
+  Receipt,
+  Book,
+  User,
+  ChartBar,
+  LayoutDashboard,
+  Package,
+  Users,
+  ShoppingCart,
+  FileText,
+} from "lucide-react";
 
 type NavItemProps = {
   to: string;
@@ -28,6 +38,15 @@ const NavItem: React.FC<NavItemProps> = ({ to, icon, children, currentPath }) =>
   );
 };
 
+const navigation = [
+  { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Produtos", href: "/products", icon: Package },
+  { name: "Clientes", href: "/customers", icon: Users },
+  { name: "Vendas", href: "/sales", icon: ShoppingCart },
+  { name: "Contas a Receber", href: "/receivables", icon: Receipt },
+  { name: "Relatórios", href: "/reports", icon: FileText },
+];
+
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   
@@ -47,103 +66,41 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             <h3 className="text-xs font-medium text-gray-500">Menu</h3>
           </div>
           
-          <NavItem
-            to="/"
-            icon={<ChartBar size={18} />}
-            currentPath={location.pathname}
-          >
-            Dashboard
-          </NavItem>
-          <NavItem
-            to="/products"
-            icon={<Book size={18} />}
-            currentPath={location.pathname}
-          >
-            Produtos
-          </NavItem>
-          <NavItem
-            to="/customers"
-            icon={<User size={18} />}
-            currentPath={location.pathname}
-          >
-            Clientes
-          </NavItem>
-          <NavItem
-            to="/sales"
-            icon={<Receipt size={18} />}
-            currentPath={location.pathname}
-          >
-            Vendas
-          </NavItem>
-          <NavItem
-            to="/receivables"
-            icon={<Calendar size={18} />}
-            currentPath={location.pathname}
-          >
-            Contas a Receber
-          </NavItem>
+          {navigation.map((item) => (
+            <NavItem
+              key={item.href}
+              to={item.href}
+              icon={<item.icon size={18} />}
+              currentPath={location.pathname}
+            >
+              {item.name}
+            </NavItem>
+          ))}
         </div>
       </aside>
       
       {/* Mobile Navigation */}
       <div className="fixed bottom-0 left-0 z-50 w-full border-t bg-white md:hidden">
-        <div className="grid h-14 grid-cols-5">
-          <Link
-            to="/"
-            className={cn(
-              "flex flex-col items-center justify-center",
-              location.pathname === "/" ? "text-primary-500" : "text-gray-500"
-            )}
-          >
-            <ChartBar size={20} />
-            <span className="text-xs">Início</span>
-          </Link>
-          <Link
-            to="/products"
-            className={cn(
-              "flex flex-col items-center justify-center",
-              location.pathname === "/products" ? "text-primary-500" : "text-gray-500"
-            )}
-          >
-            <Book size={20} />
-            <span className="text-xs">Produtos</span>
-          </Link>
-          <Link
-            to="/customers"
-            className={cn(
-              "flex flex-col items-center justify-center",
-              location.pathname === "/customers" ? "text-primary-500" : "text-gray-500"
-            )}
-          >
-            <User size={20} />
-            <span className="text-xs">Clientes</span>
-          </Link>
-          <Link
-            to="/sales"
-            className={cn(
-              "flex flex-col items-center justify-center",
-              location.pathname === "/sales" ? "text-primary-500" : "text-gray-500"
-            )}
-          >
-            <Receipt size={20} />
-            <span className="text-xs">Vendas</span>
-          </Link>
-          <Link
-            to="/receivables"
-            className={cn(
-              "flex flex-col items-center justify-center",
-              location.pathname === "/receivables" ? "text-primary-500" : "text-gray-500"
-            )}
-          >
-            <Calendar size={20} />
-            <span className="text-xs">A Receber</span>
-          </Link>
+        <div className="grid h-14 grid-cols-6">
+          {navigation.map((item) => (
+            <Link
+              key={item.href}
+              to={item.href}
+              className={cn(
+                "flex flex-col items-center justify-center",
+                location.pathname === item.href ? "text-primary-500" : "text-gray-500"
+              )}
+            >
+              <item.icon size={20} />
+              <span className="text-xs">{item.name === "Dashboard" ? "Início" : item.name}</span>
+            </Link>
+          ))}
         </div>
       </div>
       
       {/* Main Content */}
       <main className="flex-1 overflow-auto pb-16 md:pb-0">
-        <div className="container mx-auto p-4 md:p-6">
+        <div className="container mx-auto p-2 sm:p-4 md:p-6 max-w-full">
           {children}
         </div>
       </main>

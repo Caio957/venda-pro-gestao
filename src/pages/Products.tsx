@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useAppContext } from "@/contexts/AppContext";
 import { FormatCurrency } from "@/components/FormatCurrency";
@@ -152,50 +151,51 @@ const Products = () => {
           <TableHeader>
             <TableRow>
               <TableHead>Nome</TableHead>
-              <TableHead className="hidden md:table-cell">Descrição</TableHead>
-              <TableHead className="text-right">Preço de Custo</TableHead>
-              <TableHead className="text-right">Preço de Venda</TableHead>
-              <TableHead className="text-right">Estoque</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
+              <TableHead>Descrição</TableHead>
+              <TableHead>Preço de Custo</TableHead>
+              <TableHead>Preço de Venda</TableHead>
+              <TableHead>Lucro (R$)</TableHead>
+              <TableHead>Lucro (%)</TableHead>
+              <TableHead>Estoque</TableHead>
+              <TableHead>Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredProducts.length > 0 ? (
-              filteredProducts.map((product) => (
-                <TableRow key={product.id}>
-                  <TableCell className="font-medium">{product.name}</TableCell>
-                  <TableCell className="hidden max-w-xs truncate md:table-cell">
-                    {product.description}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <FormatCurrency value={product.costPrice} />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <FormatCurrency value={product.salePrice} />
-                  </TableCell>
-                  <TableCell className="text-right">{product.stock}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleOpenEditDialog(product)}
-                      >
-                        <Edit size={16} />
-                        <span className="sr-only">Editar</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDelete(product)}
-                      >
-                        <Trash size={16} />
-                        <span className="sr-only">Excluir</span>
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
+              filteredProducts.map((product) => {
+                const profit = product.salePrice - product.costPrice;
+                const profitPercentage = (profit / product.costPrice) * 100;
+                
+                return (
+                  <TableRow key={product.id}>
+                    <TableCell>{product.name}</TableCell>
+                    <TableCell>{product.description}</TableCell>
+                    <TableCell><FormatCurrency value={product.costPrice} /></TableCell>
+                    <TableCell><FormatCurrency value={product.salePrice} /></TableCell>
+                    <TableCell><FormatCurrency value={profit} /></TableCell>
+                    <TableCell>{profitPercentage.toFixed(2)}%</TableCell>
+                    <TableCell>{product.stock}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleOpenEditDialog(product)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(product)}
+                        >
+                          <Trash className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             ) : (
               <TableRow>
                 <TableCell colSpan={6} className="h-24 text-center">

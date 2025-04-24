@@ -1,134 +1,133 @@
-
-import React, { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import React from 'react';
+import { DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { FormatCurrency } from "./FormatCurrency";
+import { Label } from "@/components/ui/label";
+import { FormatCurrency } from "@/components/FormatCurrency";
+import { Receivable } from '@/contexts/AppContext';
+import { useAppContext } from '@/contexts/AppContext';
+import { toast } from "sonner";
 
-interface ReceivablePaymentProps {
-  selectedReceivables: any[];
-  onConfirmPayment: (paymentAmount: number, newDueDate?: string, applyDiscount?: boolean, discountValue?: number, discountType?: 'percentage' | 'fixed') => void;
+interface ReceivableDialogProps {
+  selectedReceivables: Receivable[];
+  onConfirmPayment: () => Promise<void>;
   onClose: () => void;
 }
 
-export const ReceivableDialog: React.FC<ReceivablePaymentProps> = ({
+export const ReceivableDialog: React.FC<ReceivableDialogProps> = ({
   selectedReceivables,
   onConfirmPayment,
   onClose,
 }) => {
-  const [paymentAmount, setPaymentAmount] = useState<string>("");
-  const [wantToRenegotiate, setWantToRenegotiate] = useState(false);
-  const [newDueDate, setNewDueDate] = useState("");
-  const [applyDiscount, setApplyDiscount] = useState(false);
-  const [discountValue, setDiscountValue] = useState<string>("");
-  const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('percentage');
+  const { setBatchPaymentAmount } = useAppContext();
+  const [isProcessing, setIsProcessing] = React.useState(false);
+  const [inputValue, setInputValue] = React.useState("");
+  const [isFirstRender, setIsFirstRender] = React.useState(true);
 
   const totalAmount = selectedReceivables.reduce((sum, r) => sum + r.amount, 0);
 
-  const handleConfirm = () => {
-    const amount = Number(paymentAmount) || 0;
-    const discount = applyDiscount ? Number(discountValue) : 0;
-    onConfirmPayment(amount, newDueDate, applyDiscount, discount, discountType);
+  // Inicializa o valor do pagamento apenas na primeira renderização
+  React.useEffect(() => {
+    if (isFirstRender) {
+      const formattedTotal = totalAmount.toFixed(2);
+      setInputValue(formattedTotal);
+      setBatchPaymentAmount(totalAmount);
+      setIsFirstRender(false);
+    }
+  }, [isFirstRender, totalAmount, setBatchPaymentAmount]);
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    
+    // Permite que o campo fique vazio para facilitar a digitação
+    if (value === "") {
+      setInputValue("");
+      setBatchPaymentAmount(0);
+      return;
+    }
+
+    // Remove caracteres não numéricos, exceto ponto
+    const numericValue = value.replace(/[^\d.]/g, "");
+    
+    // Converte para número e valida
+    const parsedValue = parseFloat(numericValue);
+    
+    // Se for um número válido e não maior que o total
+    if (!isNaN(parsedValue) && parsedValue <= totalAmount) {
+      setInputValue(numericValue);
+      setBatchPaymentAmount(parsedValue);
+    }
+  };
+
+  const handleConfirm = async () => {
+    const numericValue = parseFloat(inputValue);
+
+    if (!numericValue || numericValue <= 0) {
+      toast.error("O valor do pagamento deve ser maior que zero");
+      return;
+    }
+
+    if (numericValue > totalAmount) {
+      toast.error("O valor do pagamento não pode ser maior que o valor total");
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      await onConfirmPayment();
+    } catch (error) {
+      console.error('Error processing payment:', error);
+      toast.error("Erro ao processar pagamento");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
-    <DialogContent className="sm:max-w-[500px]">
+    <DialogContent className="sm:max-w-[425px]">
       <DialogHeader>
-        <DialogTitle>Processar Pagamento</DialogTitle>
+        <DialogTitle>Confirmar Pagamento</DialogTitle>
         <DialogDescription>
-          Total selecionado: <FormatCurrency value={totalAmount} className="font-semibold" />
+          Informe o valor recebido para processar o pagamento dos títulos selecionados.
         </DialogDescription>
       </DialogHeader>
-
       <div className="grid gap-4 py-4">
-        <div>
-          <label className="text-sm font-medium mb-2 block">Valor do Pagamento</label>
-          <Input
-            type="number"
-            value={paymentAmount}
-            onChange={(e) => setPaymentAmount(e.target.value)}
-            placeholder="Digite o valor do pagamento"
-          />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="renegotiate"
-            checked={wantToRenegotiate}
-            onCheckedChange={(checked) => setWantToRenegotiate(checked === true)}
-          />
-          <label htmlFor="renegotiate" className="text-sm">
-            Renegociar prazo de pagamento
-          </label>
-        </div>
-
-        {wantToRenegotiate && (
+        <div className="space-y-4">
           <div>
-            <label className="text-sm font-medium mb-2 block">Nova Data de Vencimento</label>
+            <p className="mb-2 text-sm text-gray-500">
+              Títulos selecionados: {selectedReceivables.length}
+            </p>
+            <p className="mb-4 text-sm text-gray-500">
+              Valor total: <FormatCurrency value={totalAmount} />
+            </p>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="paymentAmount">Valor recebido</Label>
             <Input
-              type="date"
-              value={newDueDate}
-              onChange={(e) => setNewDueDate(e.target.value)}
+              id="paymentAmount"
+              type="text"
+              inputMode="decimal"
+              value={inputValue}
+              onChange={handleAmountChange}
+              onFocus={(e) => e.target.select()}
+              className="text-right"
+              placeholder="0,00"
             />
+            <p className="text-xs text-gray-500">
+              Valor máximo permitido: <FormatCurrency value={totalAmount} />
+            </p>
           </div>
-        )}
-
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="discount"
-            checked={applyDiscount}
-            onCheckedChange={(checked) => setApplyDiscount(checked === true)}
-          />
-          <label htmlFor="discount" className="text-sm">
-            Aplicar desconto/acréscimo
-          </label>
         </div>
-
-        {applyDiscount && (
-          <div className="grid gap-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">Valor</label>
-              <Input
-                type="number"
-                value={discountValue}
-                onChange={(e) => setDiscountValue(e.target.value)}
-                placeholder="Digite o valor"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-2 block">Tipo</label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    checked={discountType === 'percentage'}
-                    onChange={() => setDiscountType('percentage')}
-                  />
-                  Porcentagem
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    checked={discountType === 'fixed'}
-                    onChange={() => setDiscountType('fixed')}
-                  />
-                  Valor Fixo
-                </label>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
-
-      <DialogFooter>
-        <Button variant="outline" onClick={onClose}>
+      <div className="flex justify-end gap-3">
+        <Button variant="outline" onClick={onClose} disabled={isProcessing}>
           Cancelar
         </Button>
-        <Button onClick={handleConfirm}>
-          Confirmar Pagamento
+        <Button onClick={handleConfirm} disabled={isProcessing}>
+          {isProcessing ? 'Processando...' : 'Confirmar Pagamento'}
         </Button>
-      </DialogFooter>
+      </div>
     </DialogContent>
   );
 };

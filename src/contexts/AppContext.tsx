@@ -19,7 +19,7 @@ export type Customer = {
   address: string;
 };
 
-export type PaymentMethod = "cash" | "credit_card" | "debit_card" | "bank_transfer" | "installment";
+export type PaymentMethod = "cash" | "credit_card" | "debit_card" | "bank_transfer" | "installment" | "bank_slip";
 
 export type PaymentStatus = "paid" | "pending" | "overdue";
 
@@ -30,18 +30,27 @@ export type SaleItem = {
   totalPrice: number;
 };
 
-export type Sale = {
+export interface Sale {
   id: string;
   customerId: string;
   date: string;
-  items: SaleItem[];
+  items: {
+    productId: string;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+  }[];
   total: number;
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
   installments?: number;
   installmentInterval?: number;
   dueDate?: string;
-};
+  installmentDates?: {
+    installmentNumber: number;
+    dueDate: string;
+  }[];
+}
 
 export type Receivable = {
   id: string;
@@ -63,13 +72,18 @@ export type PaymentHistoryEntry = {
   amount: number;
   type: 'payment' | 'reversal';
   reversedPaymentDate?: string;
+  remainingAmount?: number;
 };
 
-type AppContextType = {
+export interface AppContextType {
   products: Product[];
   customers: Customer[];
   sales: Sale[];
   receivables: Receivable[];
+  batchPaymentAmount: number;
+  setBatchPaymentAmount: (amount: number) => void;
+  setReceivables: React.Dispatch<React.SetStateAction<Receivable[]>>;
+  setSales: React.Dispatch<React.SetStateAction<Sale[]>>;
   addProduct: (product: Omit<Product, "id">) => void;
   updateProduct: (product: Product) => void;
   deleteProduct: (id: string) => void;
@@ -86,15 +100,12 @@ type AppContextType = {
   getCustomerById: (id: string) => Customer | undefined;
   getSaleById: (id: string) => Sale | undefined;
   calculateProfit: (saleId?: string) => number;
-};
+}
 
 // Create a unique ID with current timestamp + random string
 const generateId = () => {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
 };
-
-// Default context value
-const AppContext = createContext<AppContextType | undefined>(undefined);
 
 // Mock data for initial state
 const initialProducts: Product[] = [
@@ -147,34 +158,80 @@ const initialSales: Sale[] = [
 
 const initialReceivables: Receivable[] = [];
 
-export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Load state from localStorage or use initial data
-  const [products, setProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem("products");
-    return saved ? JSON.parse(saved) : initialProducts;
-  });
-  
-  const [customers, setCustomers] = useState<Customer[]>(() => {
-    const saved = localStorage.getItem("customers");
-    return saved ? JSON.parse(saved) : initialCustomers;
-  });
-  
-  const [sales, setSales] = useState<Sale[]>(() => {
-    const saved = localStorage.getItem("sales");
-    return saved ? JSON.parse(saved) : initialSales;
-  });
-  
-  const [receivables, setReceivables] = useState<Receivable[]>(() => {
-    const saved = localStorage.getItem("receivables");
-    return saved ? JSON.parse(saved) : initialReceivables;
-  });
+// Create context with a default value matching the type
+const AppContext = createContext<AppContextType>({
+  products: initialProducts,
+  customers: initialCustomers,
+  sales: initialSales,
+  receivables: initialReceivables,
+  batchPaymentAmount: 0,
+  setBatchPaymentAmount: () => {},
+  setReceivables: () => {},
+  setSales: () => {},
+  addProduct: () => {},
+  updateProduct: () => {},
+  deleteProduct: () => {},
+  addCustomer: () => {},
+  updateCustomer: () => {},
+  deleteCustomer: () => {},
+  addSale: () => {},
+  updateSale: () => {},
+  deleteSale: async () => false,
+  addReceivable: () => {},
+  updateReceivable: () => {},
+  deleteReceivable: () => {},
+  getProductById: () => undefined,
+  getCustomerById: () => undefined,
+  getSaleById: () => undefined,
+  calculateProfit: () => 0,
+});
 
-  // Save state to localStorage whenever it changes
+export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Load state from localStorage with error handling
+  const loadStateFromStorage = <T,>(key: string, initialValue: T): T => {
+    try {
+      const saved = localStorage.getItem(key);
+      return saved ? JSON.parse(saved) : initialValue;
+    } catch (error) {
+      console.error(`Error loading ${key} from localStorage:`, error);
+      return initialValue;
+    }
+  };
+
+  // Initialize state with proper error handling
+  const [products, setProducts] = useState<Product[]>(() => 
+    loadStateFromStorage("products", initialProducts)
+  );
+  
+  const [customers, setCustomers] = useState<Customer[]>(() => 
+    loadStateFromStorage("customers", initialCustomers)
+  );
+  
+  const [sales, setSales] = useState<Sale[]>(() => 
+    loadStateFromStorage("sales", initialSales)
+  );
+  
+  const [receivables, setReceivables] = useState<Receivable[]>(() => 
+    loadStateFromStorage("receivables", initialReceivables)
+  );
+
+  const [batchPaymentAmount, setBatchPaymentAmount] = useState<number>(0);
+
+  // Ensure batchPaymentAmount is a valid number
+  const handleSetBatchPaymentAmount = (amount: number) => {
+    setBatchPaymentAmount(Number(amount) || 0);
+  };
+
+  // Save state to localStorage with error handling
   useEffect(() => {
-    localStorage.setItem("products", JSON.stringify(products));
-    localStorage.setItem("customers", JSON.stringify(customers));
-    localStorage.setItem("sales", JSON.stringify(sales));
-    localStorage.setItem("receivables", JSON.stringify(receivables));
+    try {
+      localStorage.setItem("products", JSON.stringify(products));
+      localStorage.setItem("customers", JSON.stringify(customers));
+      localStorage.setItem("sales", JSON.stringify(sales));
+      localStorage.setItem("receivables", JSON.stringify(receivables));
+    } catch (error) {
+      console.error("Error saving to localStorage:", error);
+    }
   }, [products, customers, sales, receivables]);
 
   // Product CRUD operations
@@ -428,33 +485,74 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     toast.success("Venda atualizada com sucesso!");
   };
 
-  const deleteSale = (id: string) => {
-    // Get sale to restore stock
-    const saleToDelete = sales.find(s => s.id === id);
-    if (!saleToDelete) {
-      toast.error("Venda não encontrada");
-      return;
-    }
-    
-    // Restore product stock
-    const updatedProducts = [...products];
-    for (const item of saleToDelete.items) {
-      const productIndex = updatedProducts.findIndex(p => p.id === item.productId);
-      if (productIndex !== -1) {
-        updatedProducts[productIndex] = {
-          ...updatedProducts[productIndex],
-          stock: updatedProducts[productIndex].stock + item.quantity
-        };
+  const deleteSale = async (id: string) => {
+    try {
+      // Get sale to restore stock
+      const saleToDelete = sales.find(s => s.id === id);
+      if (!saleToDelete) {
+        toast.error("Venda não encontrada");
+        return false;
       }
+
+      // Check if there are any receivables with active (non-reversed) payments
+      const saleReceivables = receivables.filter(r => r.saleId === id);
+      const hasActivePayments = saleReceivables.some(r => {
+        if (!r.paymentHistory) return false;
+        
+        // Count active payments (payments without corresponding reversals)
+        const activePayments = r.paymentHistory.reduce((count, entry) => {
+          if (entry.type === 'payment') {
+            // Check if this payment has been reversed
+            const hasReversal = r.paymentHistory?.some(
+              reversal => 
+                reversal.type === 'reversal' && 
+                reversal.reversedPaymentDate === entry.date
+            );
+            return hasReversal ? count : count + 1;
+          }
+          return count;
+        }, 0);
+
+        return activePayments > 0;
+      });
+
+      if (hasActivePayments) {
+        toast.error("Não é possível excluir a venda pois existem títulos com pagamentos ativos. Por favor, estorne todos os pagamentos antes de excluir a venda.", {
+          duration: 4000,
+          important: true
+        });
+        return false;
+      }
+      
+      if (!window.confirm("Tem certeza que deseja excluir esta venda?")) {
+        return false;
+      }
+
+      // Restore product stock
+      const updatedProducts = [...products];
+      for (const item of saleToDelete.items) {
+        const productIndex = updatedProducts.findIndex(p => p.id === item.productId);
+        if (productIndex !== -1) {
+          updatedProducts[productIndex] = {
+            ...updatedProducts[productIndex],
+            stock: updatedProducts[productIndex].stock + item.quantity
+          };
+        }
+      }
+      
+      // Delete associated receivables
+      setReceivables(receivables.filter(r => r.saleId !== id));
+      
+      // Delete sale
+      setSales(sales.filter((s) => s.id !== id));
+      setProducts(updatedProducts);
+      
+      toast.success("Venda excluída com sucesso!");
+      return true;
+    } catch (error) {
+      toast.error("Erro ao excluir a venda. Tente novamente.");
+      return false;
     }
-    
-    // Delete associated receivables
-    setReceivables(receivables.filter(r => r.saleId !== id));
-    
-    // Delete sale
-    setSales(sales.filter((s) => s.id !== id));
-    setProducts(updatedProducts);
-    toast.success("Venda excluída com sucesso!");
   };
 
   // Receivable CRUD operations
@@ -465,13 +563,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateReceivable = (receivable: Receivable) => {
-    setReceivables(receivables.map((r) => (r.id === receivable.id ? receivable : r)));
+    // Ensure we have all the required fields
+    const updatedReceivable = {
+      ...receivable,
+      totalPaid: receivable.totalPaid || 0,
+      originalAmount: receivable.originalAmount || receivable.amount + (receivable.totalPaid || 0),
+      paymentHistory: receivable.paymentHistory || []
+    };
+
+    // Update the receivables state
+    setReceivables(prevReceivables => 
+      prevReceivables.map(r => r.id === updatedReceivable.id ? updatedReceivable : r)
+    );
     
-    // If receivable is marked as paid, update the sale status
-    if (receivable.status === 'paid') {
-      setSales(sales.map((s) => 
-        s.id === receivable.saleId ? { ...s, paymentStatus: 'paid' } : s
-      ));
+    // If all installments of a sale are paid, update the sale status
+    const allInstallments = receivables.filter(r => r.saleId === receivable.saleId);
+    const allPaid = allInstallments.every(r => 
+      r.id === receivable.id ? receivable.status === 'paid' : r.status === 'paid'
+    );
+    
+    if (allPaid) {
+      setSales(prevSales => 
+        prevSales.map(s => 
+          s.id === receivable.saleId ? { ...s, paymentStatus: 'paid' } : s
+        )
+      );
     }
     
     toast.success("Conta a receber atualizada com sucesso!");
@@ -511,40 +627,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }, 0);
   };
 
-  return (
-    <AppContext.Provider
-      value={{
-        products,
-        customers,
-        sales,
-        receivables,
-        addProduct,
-        updateProduct,
-        deleteProduct,
-        addCustomer,
-        updateCustomer,
-        deleteCustomer,
-        addSale,
-        updateSale,
-        deleteSale,
-        addReceivable,
-        updateReceivable,
-        deleteReceivable,
-        getProductById,
-        getCustomerById,
-        getSaleById,
-        calculateProfit
-      }}
-    >
-      {children}
-    </AppContext.Provider>
-  );
+  const contextValue: AppContextType = {
+    products,
+    customers,
+    sales,
+    receivables,
+    batchPaymentAmount,
+    setBatchPaymentAmount: handleSetBatchPaymentAmount,
+    setReceivables,
+    setSales,
+    addProduct,
+    updateProduct,
+    deleteProduct,
+    addCustomer,
+    updateCustomer,
+    deleteCustomer,
+    addSale,
+    updateSale,
+    deleteSale,
+    addReceivable,
+    updateReceivable,
+    deleteReceivable,
+    getProductById,
+    getCustomerById,
+    getSaleById,
+    calculateProfit,
+  };
+
+  return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
 };
 
-export const useAppContext = (): AppContextType => {
+// Custom hook to use the context
+export const useAppContext = () => {
   const context = useContext(AppContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error("useAppContext must be used within an AppProvider");
   }
   return context;
 };
+
+// Export the context for direct usage if needed
+export { AppContext };
