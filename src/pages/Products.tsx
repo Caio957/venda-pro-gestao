@@ -125,14 +125,14 @@ const Products = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Produtos</h1>
-          <p className="text-gray-500">Gerencie o catálogo de produtos</p>
+          <h1 className="page-title">Produtos</h1>
+          <p className="page-subtitle">Gerencie o catálogo de produtos</p>
         </div>
-        <Button onClick={handleOpenAddDialog} className="h-9 gap-2 bg-primary-400 hover:bg-primary-500">
-          <Plus size={16} />
-          <span>Novo Produto</span>
+        <Button onClick={handleOpenAddDialog}>
+          <Plus className="h-4 w-4 mr-2" />
+          Nova Produto
         </Button>
       </div>
 

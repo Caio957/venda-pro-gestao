@@ -12,6 +12,7 @@ import Customers from "./pages/Customers";
 import Sales from "./pages/Sales";
 import Receivables from "./pages/Receivables";
 import Reports from "./pages/Reports";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 // Create a new QueryClient instance with explicit configuration
@@ -40,6 +41,7 @@ const App = () => {
                 <Route path="/sales" element={<Sales />} />
                 <Route path="/receivables" element={<Receivables />} />
                 <Route path="/reports" element={<Reports />} />
+                <Route path="/settings" element={<Settings />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Layout>

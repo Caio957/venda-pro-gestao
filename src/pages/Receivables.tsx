@@ -53,6 +53,19 @@ const Receivables = () => {
     salesCount: sales?.length
   });
 
+  // Filtra os recebíveis para mostrar apenas os que têm vendas existentes
+  useEffect(() => {
+    const validReceivables = receivables.filter(receivable => {
+      const saleExists = sales.some(sale => sale.id === receivable.saleId);
+      return saleExists;
+    });
+
+    if (validReceivables.length !== receivables.length) {
+      setReceivables(validReceivables);
+      toast.info("Algumas contas a receber foram removidas pois suas vendas não existem mais.");
+    }
+  }, [sales, receivables]);
+
   useEffect(() => {
     console.log("Receivables component - useEffect montagem");
     return () => {
@@ -581,8 +594,8 @@ const Receivables = () => {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Contas a Receber</h1>
-          <p className="text-gray-500">Gerencie as contas a receber e pagamentos</p>
+          <h1 className="page-title">Contas a Receber</h1>
+          <p className="page-subtitle">Gerencie as contas a receber e pagamentos</p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">

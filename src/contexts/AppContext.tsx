@@ -19,7 +19,7 @@ export type Customer = {
   address: string;
 };
 
-export type PaymentMethod = "cash" | "credit_card" | "debit_card" | "bank_transfer" | "installment" | "bank_slip";
+export type PaymentMethod = "cash" | "credit_card" | "debit_card" | "bank_transfer" | "bank_slip" | "installment";
 
 export type PaymentStatus = "paid" | "pending" | "overdue";
 
@@ -75,6 +75,13 @@ export type PaymentHistoryEntry = {
   remainingAmount?: number;
 };
 
+export type Settings = {
+  stockControl: boolean;
+  primaryColor: string;
+  theme: 'light' | 'dark' | 'system';
+  language: 'pt-BR' | 'en';
+};
+
 export interface AppContextType {
   products: Product[];
   customers: Customer[];
@@ -100,6 +107,8 @@ export interface AppContextType {
   getCustomerById: (id: string) => Customer | undefined;
   getSaleById: (id: string) => Sale | undefined;
   calculateProfit: (saleId?: string) => number;
+  settings: Settings;
+  updateSettings: (settings: Settings) => void;
 }
 
 // Create a unique ID with current timestamp + random string
@@ -158,33 +167,15 @@ const initialSales: Sale[] = [
 
 const initialReceivables: Receivable[] = [];
 
+const initialSettings: Settings = {
+  stockControl: true,
+  primaryColor: 'blue',
+  theme: 'light',
+  language: 'pt-BR'
+};
+
 // Create context with a default value matching the type
-const AppContext = createContext<AppContextType>({
-  products: initialProducts,
-  customers: initialCustomers,
-  sales: initialSales,
-  receivables: initialReceivables,
-  batchPaymentAmount: 0,
-  setBatchPaymentAmount: () => {},
-  setReceivables: () => {},
-  setSales: () => {},
-  addProduct: () => {},
-  updateProduct: () => {},
-  deleteProduct: () => {},
-  addCustomer: () => {},
-  updateCustomer: () => {},
-  deleteCustomer: () => {},
-  addSale: () => {},
-  updateSale: () => {},
-  deleteSale: async () => false,
-  addReceivable: () => {},
-  updateReceivable: () => {},
-  deleteReceivable: () => {},
-  getProductById: () => undefined,
-  getCustomerById: () => undefined,
-  getSaleById: () => undefined,
-  calculateProfit: () => 0,
-});
+const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Load state from localStorage with error handling
@@ -211,11 +202,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     loadStateFromStorage("sales", initialSales)
   );
   
-  const [receivables, setReceivables] = useState<Receivable[]>(() => 
-    loadStateFromStorage("receivables", initialReceivables)
-  );
+  const [receivables, setReceivables] = useState<Receivable[]>(() => {
+    const loadedReceivables = loadStateFromStorage("receivables", initialReceivables);
+    const loadedSales = loadStateFromStorage("sales", initialSales);
+    
+    // Filtra os recebíveis para manter apenas os que têm vendas existentes
+    const validReceivables = loadedReceivables.filter(receivable => 
+      loadedSales.some(sale => sale.id === receivable.saleId)
+    );
+    
+    // Se houver diferença, significa que havia recebíveis inválidos
+    if (validReceivables.length !== loadedReceivables.length) {
+      console.warn("Foram encontradas e removidas contas a receber sem vendas correspondentes.");
+    }
+    
+    return validReceivables;
+  });
 
   const [batchPaymentAmount, setBatchPaymentAmount] = useState<number>(0);
+
+  const [settings, setSettings] = useState<Settings>(() => 
+    loadStateFromStorage("settings", initialSettings)
+  );
 
   // Ensure batchPaymentAmount is a valid number
   const handleSetBatchPaymentAmount = (amount: number) => {
@@ -233,6 +241,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.error("Error saving to localStorage:", error);
     }
   }, [products, customers, sales, receivables]);
+
+  // Salva as configurações no localStorage quando elas mudarem
+  useEffect(() => {
+    localStorage.setItem('app-settings', JSON.stringify(settings));
+  }, [settings]);
+
+  const updateSettings = (newSettings: Settings) => {
+    setSettings(newSettings);
+    localStorage.setItem("settings", JSON.stringify(newSettings));
+  };
 
   // Product CRUD operations
   const addProduct = (product: Omit<Product, "id">) => {
@@ -652,6 +670,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getCustomerById,
     getSaleById,
     calculateProfit,
+    settings,
+    updateSettings,
   };
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;

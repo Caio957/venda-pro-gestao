@@ -42,6 +42,14 @@ type SaleItem = {
   totalPrice: number;
 };
 
+// Função auxiliar para formatar moeda
+const formatCurrency = (value: number) => {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(value);
+};
+
 type InstallmentDate = {
   installmentNumber: number;
   dueDate: string;
@@ -89,19 +97,60 @@ const SaleForm: React.FC<{
   products,
 }) => {
   const { addSale } = useContext(AppContext);
-  const [selectedCustomer, setSelectedCustomer] = useState<string>('');
-  const [saleDate, setSaleDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [selectedCustomer, setSelectedCustomer] = useState<string>(sale.customerId || '');
+  const [saleDate, setSaleDate] = useState<string>(sale.date || new Date().toISOString().split('T')[0]);
   const [selectedProducts, setSelectedProducts] = useState<Array<{
     productId: string;
     quantity: number;
     unitPrice: number;
     totalPrice: number;
-  }>>([]);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
-  const [installments, setInstallments] = useState<number>(2);
-  const [installmentDates, setInstallmentDates] = useState<InstallmentDate[]>([]);
-  const [dueDate, setDueDate] = useState<string>('');
-  const [showInstallmentFields, setShowInstallmentFields] = useState(false);
+  }>>(sale.items?.length > 0 ? sale.items : [{
+    productId: '',
+    quantity: 1,
+    unitPrice: 0,
+    totalPrice: 0
+  }]);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(sale.paymentMethod || 'cash');
+  const [installments, setInstallments] = useState<number>(sale.installments || 2);
+  const [installmentDates, setInstallmentDates] = useState<InstallmentDate[]>(sale.installmentDates || []);
+  const [dueDate, setDueDate] = useState<string>(sale.dueDate || '');
+  const [showInstallmentFields, setShowInstallmentFields] = useState(sale.paymentMethod === 'installment');
+  const [showDueDateField, setShowDueDateField] = useState(sale.paymentMethod === 'bank_slip');
+
+  // Inicializa as datas das parcelas quando o número de parcelas muda
+  useEffect(() => {
+    if (showInstallmentFields && installments > 0) {
+      const dates: InstallmentDate[] = [];
+      const baseDate = new Date();
+      
+      for (let i = 0; i < installments; i++) {
+        const date = new Date(baseDate);
+        date.setMonth(date.getMonth() + i + 1); // Primeira parcela começa no próximo mês
+        
+        dates.push({
+          installmentNumber: i + 1,
+          dueDate: date.toISOString().split('T')[0]
+        });
+      }
+      
+      setInstallmentDates(dates);
+    }
+  }, [installments, showInstallmentFields]);
+
+  // Atualiza o estado da venda sempre que os produtos selecionados mudarem
+  useEffect(() => {
+    onSaleChange({
+      ...sale,
+      customerId: selectedCustomer,
+      date: saleDate,
+      items: selectedProducts,
+      paymentMethod,
+      installments: showInstallmentFields ? installments : undefined,
+      installmentDates: showInstallmentFields ? installmentDates : undefined,
+      dueDate: (showDueDateField || (!showInstallmentFields && paymentMethod !== 'cash')) ? dueDate : undefined,
+      total: selectedProducts.reduce((sum, item) => sum + item.totalPrice, 0)
+    });
+  }, [selectedCustomer, saleDate, selectedProducts, paymentMethod, installments, installmentDates, dueDate]);
 
   const handlePaymentMethodChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const method = event.target.value as PaymentMethod;
@@ -109,27 +158,59 @@ const SaleForm: React.FC<{
     
     if (method === 'installment') {
       setShowInstallmentFields(true);
+      setShowDueDateField(false);
+      // Inicializa as datas das parcelas
+      const dates: InstallmentDate[] = [];
+      const baseDate = new Date();
+      
+      for (let i = 0; i < installments; i++) {
+        const date = new Date(baseDate);
+        date.setMonth(date.getMonth() + i + 1);
+        
+        dates.push({
+          installmentNumber: i + 1,
+          dueDate: date.toISOString().split('T')[0]
+        });
+      }
+      
+      setInstallmentDates(dates);
+    } else if (method === 'bank_slip') {
+      setShowInstallmentFields(false);
+      setShowDueDateField(true);
+      // Define uma data de vencimento padrão para 5 dias úteis
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 5);
+      setDueDate(dueDate.toISOString().split('T')[0]);
     } else {
       setShowInstallmentFields(false);
+      setShowDueDateField(false);
       setInstallments(2);
       setInstallmentDates([]);
+      setDueDate('');
     }
   };
 
   const handleInstallmentsChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newInstallments = parseInt(event.target.value);
-    setInstallments(newInstallments);
-    
-    // Update installment dates array when number of installments changes
-    const dates: InstallmentDate[] = [];
-    for (let i = 1; i <= newInstallments; i++) {
-      const existingDate = installmentDates.find(d => d.installmentNumber === i);
-      dates.push({
-        installmentNumber: i,
-        dueDate: existingDate?.dueDate || ''
-      });
+    if (newInstallments >= 2) {
+      setInstallments(newInstallments);
+      
+      // Atualiza as datas das parcelas
+      const dates: InstallmentDate[] = [];
+      const baseDate = new Date();
+      
+      for (let i = 0; i < newInstallments; i++) {
+        const date = new Date(baseDate);
+        date.setMonth(date.getMonth() + i + 1);
+        
+        dates.push({
+          installmentNumber: i + 1,
+          dueDate: date.toISOString().split('T')[0]
+        });
+      }
+      
+      setInstallmentDates(dates);
     }
-    setInstallmentDates(dates);
   };
 
   const handleInstallmentDateChange = (installmentNumber: number, date: string) => {
@@ -147,8 +228,7 @@ const SaleForm: React.FC<{
 
     const total = selectedProducts.reduce((sum, item) => sum + item.totalPrice, 0);
     
-    const newSale: Sale = {
-      id: crypto.randomUUID(),
+    const newSale = {
       customerId: selectedCustomer,
       date: saleDate,
       items: selectedProducts.map(item => ({
@@ -159,7 +239,7 @@ const SaleForm: React.FC<{
       })),
       total,
       paymentMethod,
-      paymentStatus: 'pending',
+      paymentStatus: paymentMethod === 'cash' ? 'paid' : 'pending',
       ...(paymentMethod === 'installment' ? {
         installments,
         installmentDates: installmentDates.map(date => ({
@@ -171,22 +251,40 @@ const SaleForm: React.FC<{
       })
     };
 
-    await addSale(newSale);
-    
-    // Reset form
-    setSelectedCustomer('');
-    setSaleDate('');
-    setSelectedProducts([]);
-    setPaymentMethod('cash');
-    setInstallments(2);
-    setInstallmentDates([]);
-    setDueDate('');
-    setShowInstallmentFields(false);
+    try {
+      await addSale(newSale);
+      
+      // Reset form
+      setSelectedCustomer('');
+      setSaleDate(new Date().toISOString().split('T')[0]);
+      setSelectedProducts([{
+        productId: '',
+        quantity: 1,
+        unitPrice: 0,
+        totalPrice: 0
+      }]);
+      setPaymentMethod('cash');
+      setInstallments(2);
+      setInstallmentDates([]);
+      setDueDate('');
+      setShowInstallmentFields(false);
+      
+      // Fecha o diálogo
+      onSubmit(e);
+    } catch (error) {
+      console.error('Erro ao salvar venda:', error);
+      toast.error('Erro ao salvar venda. Tente novamente.');
+    }
   };
 
   const resetForm = () => {
     setSelectedCustomer(null);
-    setSelectedProducts([]);
+    setSelectedProducts([{
+      productId: '',
+      quantity: 1,
+      unitPrice: 0,
+      totalPrice: 0
+    }]);
     setPaymentMethod('cash');
     setInstallments(2);
     setInstallmentDates([]);
@@ -238,17 +336,18 @@ const SaleForm: React.FC<{
                   newProducts[index] = {
                     ...item,
                     productId: e.target.value,
-                    unitPrice: product?.price || 0,
-                    totalPrice: (product?.price || 0) * item.quantity
+                    unitPrice: product?.salePrice || 0,
+                    totalPrice: (product?.salePrice || 0) * item.quantity
                   };
                   setSelectedProducts(newProducts);
                 }}
                 className="flex-1 p-2 border rounded"
+                required
               >
                 <option value="">Selecione um produto</option>
                 {products.map(product => (
                   <option key={product.id} value={product.id}>
-                    {product.name} - {FormatCurrency(product.price)}
+                    {product.name} - {formatCurrency(product.salePrice)}
                   </option>
                 ))}
               </select>
@@ -267,12 +366,18 @@ const SaleForm: React.FC<{
                 min="1"
                 className="w-24 p-2 border rounded"
                 placeholder="Qtd"
+                required
               />
               <button
                 type="button"
                 onClick={() => {
                   const newProducts = selectedProducts.filter((_, i) => i !== index);
-                  setSelectedProducts(newProducts);
+                  setSelectedProducts(newProducts.length > 0 ? newProducts : [{
+                    productId: '',
+                    quantity: 1,
+                    unitPrice: 0,
+                    totalPrice: 0
+                  }]);
                 }}
                 className="p-2 text-red-600 hover:text-red-800"
               >
@@ -290,7 +395,7 @@ const SaleForm: React.FC<{
             }}
             className="px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700"
           >
-            Adicionar Produto
+            Adicionar Mais Produtos
           </button>
         </div>
       </div>
@@ -304,7 +409,11 @@ const SaleForm: React.FC<{
             className="w-full p-2 border rounded"
             required
           >
-            <option value="cash">À Vista</option>
+            <option value="cash">Dinheiro</option>
+            <option value="credit_card">Cartão de Crédito</option>
+            <option value="debit_card">Cartão de Débito</option>
+            <option value="bank_transfer">Transferência Bancária</option>
+            <option value="bank_slip">Boleto</option>
             <option value="installment">Parcelado</option>
           </select>
         </div>
@@ -317,6 +426,20 @@ const SaleForm: React.FC<{
               value={installments}
               onChange={handleInstallmentsChange}
               min="2"
+              className="w-full p-2 border rounded"
+              required
+            />
+          </div>
+        )}
+
+        {showDueDateField && (
+          <div className="space-y-2">
+            <Label>Data de Vencimento do Boleto</Label>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              min={new Date().toISOString().split('T')[0]}
               className="w-full p-2 border rounded"
               required
             />
@@ -612,7 +735,10 @@ const Sales = () => {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold text-gray-900">Vendas</h1>
+        <div>
+          <h1 className="page-title">Vendas</h1>
+          <p className="page-subtitle">Gerencie suas vendas</p>
+        </div>
         <Button onClick={handleOpenAddDialog}>
           <Plus className="h-4 w-4 mr-2" />
           Nova Venda

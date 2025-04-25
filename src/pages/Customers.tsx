@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useAppContext } from "@/contexts/AppContext";
 import { Button } from "@/components/ui/button";
@@ -40,6 +39,19 @@ const Customers = () => {
   });
   const [searchTerm, setSearchTerm] = useState("");
 
+  // Função para formatar número de telefone
+  const formatPhoneNumber = (value: string) => {
+    // Remove tudo que não for número
+    const numbers = value.replace(/\D/g, '');
+    
+    // Verifica se é celular (9 dígitos) ou telefone fixo (8 dígitos)
+    if (numbers.length <= 10) { // Telefone fixo com DDD
+      return numbers.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3').trim();
+    } else { // Celular com DDD
+      return numbers.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3').trim();
+    }
+  };
+
   const handleOpenAddDialog = () => {
     setDialogMode("add");
     setCurrentCustomer({
@@ -67,10 +79,19 @@ const Customers = () => {
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     const { name, value } = e.target;
-    setCurrentCustomer({
-      ...currentCustomer,
-      [name]: value,
-    });
+    
+    // Se for o campo de telefone, aplica a máscara
+    if (name === 'phone') {
+      setCurrentCustomer({
+        ...currentCustomer,
+        [name]: formatPhoneNumber(value),
+      });
+    } else {
+      setCurrentCustomer({
+        ...currentCustomer,
+        [name]: value,
+      });
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -107,14 +128,14 @@ const Customers = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Clientes</h1>
-          <p className="text-gray-500">Gerencie seus clientes</p>
+          <h1 className="page-title">Clientes</h1>
+          <p className="page-subtitle">Gerencie seus clientes</p>
         </div>
-        <Button onClick={handleOpenAddDialog} className="h-9 gap-2 bg-primary-400 hover:bg-primary-500">
-          <Plus size={16} />
-          <span>Novo Cliente</span>
+        <Button onClick={handleOpenAddDialog}>
+          <Plus className="h-4 w-4 mr-2" />
+          Novo Cliente
         </Button>
       </div>
 

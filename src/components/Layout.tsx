@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
@@ -12,6 +12,8 @@ import {
   Users,
   ShoppingCart,
   FileText,
+  Menu,
+  Settings,
 } from "lucide-react";
 
 type NavItemProps = {
@@ -45,11 +47,49 @@ const navigation = [
   { name: "Vendas", href: "/sales", icon: ShoppingCart },
   { name: "Contas a Receber", href: "/receivables", icon: Receipt },
   { name: "Relatórios", href: "/reports", icon: FileText },
+  { name: "Configurações", href: "/settings", icon: Settings },
 ];
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+
+  // Handle escape key to close mobile menu
+  const handleEscapeKey = useCallback((event: KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      setMobileMenuOpen(false);
+    }
+  }, []);
+
+  // Handle click outside to close mobile menu
+  const handleClickOutside = useCallback((event: MouseEvent) => {
+    const target = event.target as HTMLElement;
+    if (target.closest('[data-mobile-menu]') === null && mobileMenuOpen) {
+      setMobileMenuOpen(false);
+    }
+  }, [mobileMenuOpen]);
+
+  // Add event listeners
+  useEffect(() => {
+    document.addEventListener('keydown', handleEscapeKey);
+    document.addEventListener('click', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('keydown', handleEscapeKey);
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [handleEscapeKey, handleClickOutside]);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
   
+  const toggleMobileMenu = useCallback((event: React.MouseEvent) => {
+    event.stopPropagation();
+    setMobileMenuOpen(prev => !prev);
+  }, []);
+
   return (
     <div className="flex min-h-screen">
       {/* Sidebar */}
@@ -79,27 +119,56 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         </div>
       </aside>
       
+      {/* Mobile Header */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-white border-b md:hidden">
+        <div className="flex items-center justify-between px-4 py-2">
+          <div>
+            <h2 className="text-lg font-semibold text-primary-800">VendaPro</h2>
+            <p className="text-xs text-gray-500">Sistema de Gestão de Vendas</p>
+          </div>
+          <button
+            onClick={toggleMobileMenu}
+            className="p-2 text-gray-600 hover:bg-gray-100 rounded-md"
+            aria-label="Toggle menu"
+            aria-expanded={mobileMenuOpen}
+          >
+            <Menu size={24} />
+          </button>
+        </div>
+      </div>
+
       {/* Mobile Navigation */}
-      <div className="fixed bottom-0 left-0 z-50 w-full border-t bg-white md:hidden">
-        <div className="grid h-14 grid-cols-6">
-          {navigation.map((item) => (
-            <Link
-              key={item.href}
-              to={item.href}
-              className={cn(
-                "flex flex-col items-center justify-center",
-                location.pathname === item.href ? "text-primary-500" : "text-gray-500"
-              )}
-            >
-              <item.icon size={20} />
-              <span className="text-xs">{item.name === "Dashboard" ? "Início" : item.name}</span>
-            </Link>
-          ))}
+      <div 
+        data-mobile-menu
+        className={cn(
+          "fixed inset-0 z-40 transform transition-transform duration-300 ease-in-out md:hidden",
+          mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+        aria-hidden={!mobileMenuOpen}
+      >
+        <div className="relative h-full w-64 bg-white shadow-xl pt-16">
+          <nav className="flex flex-col gap-1 p-2">
+            {navigation.map((item) => (
+              <Link
+                key={item.href}
+                to={item.href}
+                className={cn(
+                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-all",
+                  location.pathname === item.href 
+                    ? "bg-primary-200 text-primary-800 font-medium" 
+                    : "text-gray-600 hover:bg-primary-200 hover:text-primary-800"
+                )}
+              >
+                <item.icon size={20} />
+                <span>{item.name === "Dashboard" ? "Início" : item.name}</span>
+              </Link>
+            ))}
+          </nav>
         </div>
       </div>
       
       {/* Main Content */}
-      <main className="flex-1 overflow-auto pb-16 md:pb-0">
+      <main className="flex-1 overflow-auto md:pb-0 pt-16 md:pt-0">
         <div className="container mx-auto p-2 sm:p-4 md:p-6 max-w-full">
           {children}
         </div>

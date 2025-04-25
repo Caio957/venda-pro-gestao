@@ -554,14 +554,19 @@ const Reports = () => {
         }
       }
 
+      // Calcula o valor pendente do título
+      const paidAmount = relatedReceivable?.totalPaid || 0;
+      const pendingAmount = sale.total - paidAmount;
+
       return {
         date: new Date(sale.date),
         total: sale.total,
         items: sale.items.length,
         status,
         method: sale.paymentMethod,
-        paidAmount: relatedReceivable?.totalPaid || 0,
-        receivableStatus: relatedReceivable?.status // Adiciona para debug
+        paidAmount,
+        pendingAmount,
+        receivableStatus: relatedReceivable?.status
       };
     }).sort((a, b) => b.date.getTime() - a.date.getTime());
 
@@ -763,7 +768,12 @@ const Reports = () => {
           doc.setFontSize(10);
           doc.setTextColor(100, 100, 100);
           
-          // Método de pagamento
+          // Se houver valor pendente e o status não for 'paid', mostra o valor pendente
+          if (purchase.pendingAmount > 0 && purchase.status !== 'paid') {
+            doc.text(`Valor Pendente: ${formatCurrency(purchase.pendingAmount)}`, 40, currentY + 50);
+          }
+
+          // Método de pagamento (movido para baixo para acomodar o valor pendente)
           const paymentMethod = formatPaymentMethod(purchase.method);
           doc.text(paymentMethod, 40, currentY + 58);
           
@@ -825,8 +835,8 @@ const Reports = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Relatórios</h1>
-        <p className="text-gray-500">Gere relatórios e análises do seu negócio</p>
+        <h1 className="page-title">Relatórios</h1>
+        <p className="page-subtitle">Gere relatórios e análises do seu negócio</p>
       </div>
 
       <Card>

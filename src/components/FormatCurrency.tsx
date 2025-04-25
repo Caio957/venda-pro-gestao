@@ -1,4 +1,3 @@
-
 import React from "react";
 
 type FormatCurrencyProps = {
@@ -6,7 +5,7 @@ type FormatCurrencyProps = {
   className?: string;
 };
 
-export const FormatCurrency: React.FC<FormatCurrencyProps> = ({ value, className }) => {
+export const FormatCurrency: React.FC<FormatCurrencyProps> = ({ value = 0, className }) => {
   const formattedValue = new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",

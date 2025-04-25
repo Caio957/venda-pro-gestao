@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useAppContext } from "@/contexts/AppContext";
 import { FormatCurrency } from "@/components/FormatCurrency";
@@ -63,8 +62,8 @@ const Dashboard = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500">Visão geral do seu negócio</p>
+        <h1 className="page-title">Dashboard</h1>
+        <p className="page-subtitle">Visão geral do seu negócio</p>
       </div>
       
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
