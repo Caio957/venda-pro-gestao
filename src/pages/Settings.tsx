@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -29,13 +28,17 @@ function applyPrimaryColorVars(colorId: string) {
   document.documentElement.style.setProperty('--primary-hover', color.hover);
   document.documentElement.style.setProperty('--primary-light', color.light);
   
-  // Aplica para modo escuro (ajuste: use as mesmas cores ou personalize se quiser)
+  // Aplica para modo escuro (use as mesmas cores)
   const dark = document.querySelector('.dark') as HTMLElement | null;
   if (dark) {
     dark.style.setProperty('--primary', color.hsl);
     dark.style.setProperty('--primary-hover', color.hover);
     dark.style.setProperty('--primary-light', color.light);
   }
+  
+  // Adiciona classe específica da cor para melhor controle via CSS
+  document.documentElement.classList.remove(...themeColors.map(c => `theme-${c.id}`));
+  document.documentElement.classList.add(`theme-${colorId}`);
 }
 
 export default function Settings() {
