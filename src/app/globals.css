@@ -96,6 +96,29 @@ button.icon:hover,
   color: #6d28d9 !important;
 }
 
+/* Estilos para botões de ação na tabela */
+.action-button-edit {
+  background-color: #ebf5ff !important;
+  color: #2563eb !important;
+  border: 1px solid #bfdbfe !important;
+}
+
+.action-button-edit:hover {
+  background-color: #dbeafe !important;
+  color: #1d4ed8 !important;
+}
+
+.action-button-delete {
+  background-color: #fef2f2 !important;
+  color: #dc2626 !important;
+  border: 1px solid #fecaca !important;
+}
+
+.action-button-delete:hover {
+  background-color: #fee2e2 !important;
+  color: #b91c1c !important;
+}
+
 /* Variantes de botões */
 .btn-outline,
 .button[data-variant="outline"] {
@@ -298,4 +321,4 @@ input[type="checkbox"] {
 
 .page-subtitle {
   @apply text-sm text-muted-foreground dark:text-muted-foreground mb-6;
-} 
+}

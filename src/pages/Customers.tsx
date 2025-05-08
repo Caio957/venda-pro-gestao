@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useAppContext } from "@/contexts/AppContext";
 import { Button } from "@/components/ui/button";
@@ -171,17 +172,19 @@ const Customers = () => {
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button
-                        variant="outline"
-                        size="sm"
+                        variant="ghost"
+                        size="icon"
                         onClick={() => handleOpenEditDialog(customer)}
+                        className="bg-blue-50 hover:bg-blue-100 text-blue-600 h-8 w-8 p-0"
                       >
                         <Edit size={16} />
                         <span className="sr-only">Editar</span>
                       </Button>
                       <Button
-                        variant="outline"
-                        size="sm"
+                        variant="ghost"
+                        size="icon"
                         onClick={() => handleDelete(customer)}
+                        className="bg-red-50 hover:bg-red-100 text-red-600 h-8 w-8 p-0"
                       >
                         <Trash size={16} />
                         <span className="sr-only">Excluir</span>
@@ -267,7 +270,7 @@ const Customers = () => {
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-primary-400 hover:bg-primary-500">Salvar</Button>
+              <Button type="submit">Salvar</Button>
             </DialogFooter>
           </form>
         </DialogContent>
