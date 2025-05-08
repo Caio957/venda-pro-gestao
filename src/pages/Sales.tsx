@@ -385,7 +385,7 @@ const SaleForm: React.FC<{
               </button>
             </div>
           ))}
-          <button
+          <Button
             type="button"
             onClick={() => {
               setSelectedProducts([
@@ -393,10 +393,10 @@ const SaleForm: React.FC<{
                 { productId: '', quantity: 1, unitPrice: 0, totalPrice: 0 }
               ]);
             }}
-            className="px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+            variant="secondary"
           >
             Adicionar Mais Produtos
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -468,12 +468,9 @@ const SaleForm: React.FC<{
       )}
 
       <div className="pt-4">
-        <button
-          type="submit"
-          className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
+        <Button type="submit" className="w-full">
           Finalizar Venda
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -739,7 +736,7 @@ const Sales = () => {
           <h1 className="page-title">Vendas</h1>
           <p className="page-subtitle">Gerencie suas vendas</p>
         </div>
-        <Button onClick={handleOpenAddDialog}>
+        <Button variant="default" onClick={handleOpenAddDialog}>
           <Plus className="h-4 w-4 mr-2" />
           Nova Venda
         </Button>

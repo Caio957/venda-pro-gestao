@@ -10,13 +10,31 @@ import { useAppContext } from "@/contexts/AppContext";
 
 // Definição das cores disponíveis
 const themeColors = [
-  { id: 'blue', name: 'Azul Corporativo', value: '#2563eb' },
-  { id: 'purple', name: 'Roxo Moderno', value: '#7c3aed' },
-  { id: 'teal', name: 'Verde Água', value: '#0d9488' },
-  { id: 'indigo', name: 'Índigo Profissional', value: '#4f46e5' },
-  { id: 'emerald', name: 'Esmeralda', value: '#059669' },
-  { id: 'slate', name: 'Cinza Executivo', value: '#475569' }
+  { id: 'blue', name: 'Azul Corporativo', hsl: '221 83% 56%', hover: '221 71% 41%', light: '213 96% 93%' },
+  { id: 'purple', name: 'Roxo Moderno', hsl: '262 83% 58%', hover: '263 68% 48%', light: '276 100% 97%' },
+  { id: 'teal', name: 'Verde Água', hsl: '174 85% 32%', hover: '174 81% 25%', light: '168 80% 90%' },
+  { id: 'indigo', name: 'Índigo Profissional', hsl: '243 72% 58%', hover: '245 60% 41%', light: '226 100% 96%' },
+  { id: 'emerald', name: 'Esmeralda', hsl: '160 94% 31%', hover: '160 95% 25%', light: '146 76% 90%' },
+  { id: 'slate', name: 'Cinza Executivo', hsl: '222 15% 35%', hover: '222 22% 25%', light: '210 20% 97%' }
 ];
+
+// Função para aplicar variáveis CSS de cor no :root e .dark
+function applyPrimaryColorVars(colorId: string) {
+  const color = themeColors.find(c => c.id === colorId);
+  if (!color) return;
+  const root = document.documentElement;
+  // Aplica para modo claro
+  root.style.setProperty('--primary', color.hsl);
+  root.style.setProperty('--primary-hover', color.hover);
+  root.style.setProperty('--primary-light', color.light);
+  // Aplica para modo escuro (ajuste: use as mesmas cores ou personalize se quiser)
+  const dark = document.querySelector('.dark');
+  if (dark) {
+    dark.style.setProperty('--primary', color.hsl);
+    dark.style.setProperty('--primary-hover', color.hover);
+    dark.style.setProperty('--primary-light', color.light);
+  }
+}
 
 export default function Settings() {
   const { toast } = useToast();
@@ -32,6 +50,8 @@ export default function Settings() {
     updateSettings({ ...settings, theme: newTheme });
     document.documentElement.classList.remove('light', 'dark');
     document.documentElement.classList.add(newTheme);
+    // Reaplica as variáveis de cor ao trocar o tema
+    applyPrimaryColorVars(primaryColor);
     toast({
       title: "Tema atualizado",
       description: `O tema foi alterado para ${newTheme === 'light' ? 'claro' : newTheme === 'dark' ? 'escuro' : 'sistema'}.`
@@ -55,7 +75,7 @@ export default function Settings() {
     document.documentElement.classList.remove(...themeColors.map(color => `theme-${color.id}`));
     document.documentElement.classList.add(`theme-${colorId}`);
     updateSettings({ ...settings, primaryColor: colorId });
-    
+    applyPrimaryColorVars(colorId);
     const selectedColor = themeColors.find(color => color.id === colorId);
     if (selectedColor) {
       toast({
@@ -67,33 +87,14 @@ export default function Settings() {
 
   // Aplicar configurações ao carregar a página
   useEffect(() => {
-    // Aplicar tema
-    if (theme === 'system') {
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      document.documentElement.classList.remove('light', 'dark');
-      document.documentElement.classList.add(systemTheme);
-    } else {
-      document.documentElement.classList.remove('light', 'dark');
-      document.documentElement.classList.add(theme);
-    }
-
+    document.documentElement.classList.remove('light', 'dark');
+    document.documentElement.classList.add(theme);
     // Aplicar cor do tema
     if (primaryColor) {
       document.documentElement.classList.remove(...themeColors.map(color => `theme-${color.id}`));
       document.documentElement.classList.add(`theme-${primaryColor}`);
+      applyPrimaryColorVars(primaryColor);
     }
-
-    // Adicionar listener para mudanças no tema do sistema
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (e: MediaQueryListEvent) => {
-      if (theme === 'system') {
-        document.documentElement.classList.remove('light', 'dark');
-        document.documentElement.classList.add(e.matches ? 'dark' : 'light');
-      }
-    };
-
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
   }, [theme, primaryColor]);
 
   return (
@@ -130,7 +131,6 @@ export default function Settings() {
                 >
                   <option value="light">Claro</option>
                   <option value="dark">Escuro</option>
-                  <option value="system">Sistema</option>
                 </select>
               </div>
 

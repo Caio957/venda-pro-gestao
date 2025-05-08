@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -26,25 +25,18 @@ export default {
 				background: 'hsl(var(--background))',
 				foreground: 'hsl(var(--foreground))',
 				primary: {
-					DEFAULT: '#9b87f5',
-					foreground: '#ffffff',
-					100: '#f5f3fe',
-					200: '#e5deff',
-					300: '#c4b5fa',
-					400: '#9b87f5',
-					500: '#7E69AB',
-					600: '#6E59A5',
-					700: '#5a4a89',
-					800: '#3f3361',
-					900: '#1A1F2C',
+					DEFAULT: 'var(--primary)',
+					foreground: 'var(--primary-foreground)',
+					hover: 'var(--primary-hover)',
+					light: 'var(--primary-light)',
 				},
 				secondary: {
 					DEFAULT: 'hsl(var(--secondary))',
 					foreground: 'hsl(var(--secondary-foreground))'
 				},
 				destructive: {
-					DEFAULT: 'hsl(var(--destructive))',
-					foreground: 'hsl(var(--destructive-foreground))'
+					DEFAULT: 'var(--destructive)',
+					foreground: 'var(--destructive-foreground)'
 				},
 				muted: {
 					DEFAULT: 'hsl(var(--muted))',
@@ -65,7 +57,7 @@ export default {
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
-					primary: '#9b87f5',
+					primary: 'var(--primary)',
 					'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
 					accent: 'hsl(var(--sidebar-accent))',
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
