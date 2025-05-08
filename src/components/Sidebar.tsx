@@ -1,6 +1,7 @@
+
 import { cn } from "@/lib/utils";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 interface SidebarItemProps {
   href: string;
@@ -9,12 +10,12 @@ interface SidebarItemProps {
 }
 
 const SidebarItem = ({ href, icon, label }: SidebarItemProps) => {
-  const pathname = usePathname();
-  const isActive = pathname === href;
+  const location = useLocation();
+  const isActive = location.pathname === href;
 
   return (
     <Link
-      href={href}
+      to={href}
       className={cn(
         "sidebar-item",
         isActive && "active"
@@ -26,4 +27,4 @@ const SidebarItem = ({ href, icon, label }: SidebarItemProps) => {
   );
 };
 
-export default SidebarItem; 
+export default SidebarItem;
