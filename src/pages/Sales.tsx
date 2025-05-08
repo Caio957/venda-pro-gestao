@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from "react";
 import { useAppContext } from "@/contexts/AppContext";
 import { Button } from "@/components/ui/button";
@@ -159,31 +158,12 @@ const Sales = () => {
     setCurrentSale(prev => ({ ...prev, items: updatedItems }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (currentSale.items.length === 0) {
-      toast.error("Adicione pelo menos um produto");
-      return;
-    }
-
+  const handleSubmit = (saleData: Sale) => {    
     if (dialogMode === "add") {
-      const newSale: Omit<Sale, "id"> = {
-        customerId: currentSale.customerId,
-        date: currentSale.date,
-        items: currentSale.items,
-        total: currentSale.total,
-        paymentMethod: currentSale.paymentMethod,
-        paymentStatus: currentSale.paymentStatus,
-        installments: currentSale.installments,
-        installmentInterval: currentSale.installmentInterval,
-        dueDate: currentSale.dueDate,
-        installmentDates: currentSale.installmentDates || [],
-      };
-      addSale(newSale);
+      addSale(saleData);
       toast.success("Venda registrada com sucesso");
     } else {
-      updateSale(currentSale);
+      updateSale(saleData);
       toast.success("Venda atualizada com sucesso");
     }
 
@@ -278,15 +258,14 @@ const Sales = () => {
             </DialogDescription>
           </DialogHeader>
           <SaleForm
-            sale={currentSale}
-            selectedProduct={selectedProduct}
-            onSaleChange={setCurrentSale}
-            onProductChange={setSelectedProduct}
-            onAddProduct={handleAddProduct}
-            onRemoveItem={handleRemoveItem}
             onSubmit={handleSubmit}
-            customers={customers}
-            products={products}
+            initialValues={dialogMode === "edit" ? {
+              id: currentSale.id,
+              customerId: currentSale.customerId,
+              date: currentSale.date,
+              paymentMethod: currentSale.paymentMethod,
+              paymentStatus: currentSale.paymentStatus,
+            } : undefined}
           />
         </DialogContent>
       </Dialog>

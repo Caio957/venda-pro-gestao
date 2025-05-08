@@ -1,18 +1,16 @@
 // Fix the imports to use useAppContext instead of AppContext
 import { useState } from 'react';
-import { useAppContext } from '@/contexts/AppContext';
+import { useAppContext, PaymentMethod, PaymentStatus } from '@/contexts/AppContext';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -26,8 +24,8 @@ const saleSchema = z.object({
   productId: z.string().min(1, { message: "Selecione um produto" }),
   quantity: z.number().min(1, { message: "A quantidade deve ser maior que zero" }),
   price: z.number().min(0, { message: "O preço não pode ser negativo" }),
-  paymentMethod: z.string().min(1, { message: "Selecione um método de pagamento" }),
-  paymentStatus: z.string().min(1, { message: "Selecione um status de pagamento" }),
+  paymentMethod: z.enum(['cash', 'credit_card', 'debit_card', 'bank_transfer', 'bank_slip', 'installment']),
+  paymentStatus: z.enum(['paid', 'pending', 'overdue']),
   notes: z.string().optional(),
 });
 
@@ -35,22 +33,25 @@ type SaleFormValues = z.infer<typeof saleSchema>;
 
 interface SaleFormProps {
   onSubmit: (data: Sale) => void;
-  initialValues?: Partial<SaleFormValues>;
+  initialValues?: Partial<SaleFormValues> & { 
+    id?: string;
+    date?: string;
+  };
 }
 
 const paymentMethods = [
-  { value: 'credit_card', label: 'Cartão de Crédito' },
-  { value: 'debit_card', label: 'Cartão de Débito' },
-  { value: 'cash', label: 'Dinheiro' },
-  { value: 'bank_transfer', label: 'Transferência Bancária' },
-  { value: 'paypal', label: 'PayPal' },
+  { value: 'credit_card' as PaymentMethod, label: 'Cartão de Crédito' },
+  { value: 'debit_card' as PaymentMethod, label: 'Cartão de Débito' },
+  { value: 'cash' as PaymentMethod, label: 'Dinheiro' },
+  { value: 'bank_transfer' as PaymentMethod, label: 'Transferência Bancária' },
+  { value: 'paypal' as PaymentMethod, label: 'PayPal' },
 ];
 
 const paymentStatuses = [
-  { value: 'pending', label: 'Pendente' },
-  { value: 'paid', label: 'Pago' },
-  { value: 'refunded', label: 'Reembolsado' },
-  { value: 'canceled', label: 'Cancelado' },
+  { value: 'pending' as PaymentStatus, label: 'Pendente' },
+  { value: 'paid' as PaymentStatus, label: 'Pago' },
+  { value: 'refunded' as PaymentStatus, label: 'Reembolsado' },
+  { value: 'canceled' as PaymentStatus, label: 'Cancelado' },
 ];
 
 const SaleForm: React.FC<SaleFormProps> = ({ onSubmit, initialValues }) => {
@@ -64,8 +65,8 @@ const SaleForm: React.FC<SaleFormProps> = ({ onSubmit, initialValues }) => {
       productId: initialValues?.productId || "",
       quantity: initialValues?.quantity || 1,
       price: initialValues?.price || 0,
-      paymentMethod: initialValues?.paymentMethod || "credit_card",
-      paymentStatus: initialValues?.paymentStatus || "pending",
+      paymentMethod: (initialValues?.paymentMethod as PaymentMethod) || "credit_card",
+      paymentStatus: (initialValues?.paymentStatus as PaymentStatus) || "pending",
       notes: initialValues?.notes || "",
     },
     mode: "onChange",
@@ -81,13 +82,18 @@ const SaleForm: React.FC<SaleFormProps> = ({ onSubmit, initialValues }) => {
       const saleData: Sale = {
         id: initialValues?.id || Math.random().toString(36).substring(7), // Generate a random ID if it's a new sale
         customerId: values.customerId,
-        productId: values.productId,
-        quantity: values.quantity,
-        price: values.price,
+        date: initialValues?.date || new Date().toISOString(),
+        items: [
+          {
+            productId: values.productId,
+            quantity: values.quantity,
+            unitPrice: values.price,
+            totalPrice: values.quantity * values.price
+          }
+        ],
+        total: values.quantity * values.price,
         paymentMethod: values.paymentMethod,
         paymentStatus: values.paymentStatus,
-        notes: values.notes,
-        date: initialValues?.date || new Date(),
       };
 
       onSubmit(saleData);
