@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -22,13 +23,14 @@ const themeColors = [
 function applyPrimaryColorVars(colorId: string) {
   const color = themeColors.find(c => c.id === colorId);
   if (!color) return;
-  const root = document.documentElement;
-  // Aplica para modo claro
-  root.style.setProperty('--primary', color.hsl);
-  root.style.setProperty('--primary-hover', color.hover);
-  root.style.setProperty('--primary-light', color.light);
+  
+  // Usando document.documentElement que é o elemento :root
+  document.documentElement.style.setProperty('--primary', color.hsl);
+  document.documentElement.style.setProperty('--primary-hover', color.hover);
+  document.documentElement.style.setProperty('--primary-light', color.light);
+  
   // Aplica para modo escuro (ajuste: use as mesmas cores ou personalize se quiser)
-  const dark = document.querySelector('.dark');
+  const dark = document.querySelector('.dark') as HTMLElement | null;
   if (dark) {
     dark.style.setProperty('--primary', color.hsl);
     dark.style.setProperty('--primary-hover', color.hover);
@@ -39,13 +41,13 @@ function applyPrimaryColorVars(colorId: string) {
 export default function Settings() {
   const { toast } = useToast();
   const { settings, updateSettings } = useAppContext();
-  const [theme, setTheme] = useState(settings?.theme || 'light');
-  const [language, setLanguage] = useState(settings?.language || 'pt-BR');
+  const [theme, setTheme] = useState<'light' | 'dark'>(settings?.theme as 'light' | 'dark' || 'light');
+  const [language, setLanguage] = useState<'pt-BR' | 'en'>(settings?.language as 'pt-BR' | 'en' || 'pt-BR');
   const [primaryColor, setPrimaryColor] = useState(settings?.primaryColor || 'blue');
 
   // Função para atualizar o tema
   const handleThemeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const newTheme = event.target.value;
+    const newTheme = event.target.value as 'light' | 'dark';
     setTheme(newTheme);
     updateSettings({ ...settings, theme: newTheme });
     document.documentElement.classList.remove('light', 'dark');
@@ -60,7 +62,7 @@ export default function Settings() {
 
   // Função para atualizar o idioma
   const handleLanguageChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const newLanguage = event.target.value;
+    const newLanguage = event.target.value as 'pt-BR' | 'en';
     setLanguage(newLanguage);
     updateSettings({ ...settings, language: newLanguage });
     toast({
@@ -165,8 +167,8 @@ export default function Settings() {
                           <div
                             className="h-6 w-6 rounded-full ring-2 ring-offset-2 transition-all duration-200"
                             style={{ 
-                              backgroundColor: color.value,
-                              boxShadow: primaryColor === color.id ? `0 0 0 2px ${color.value}` : 'none'
+                              backgroundColor: `hsl(${color.hsl})`,
+                              boxShadow: primaryColor === color.id ? `0 0 0 2px hsl(${color.hsl})` : 'none'
                             }}
                           />
                           <span className="text-sm font-medium leading-none">
@@ -284,4 +286,4 @@ export default function Settings() {
       </Tabs>
     </div>
   );
-} 
+}

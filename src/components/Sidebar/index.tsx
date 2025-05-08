@@ -1,3 +1,4 @@
+
 import { LayoutGrid, Package, Users, ShoppingCart, FileText, Settings } from "lucide-react";
 import SidebarItem from "../SidebarItem";
 
@@ -50,4 +51,4 @@ export default function Sidebar() {
       </div>
     </aside>
   );
-} 
+}

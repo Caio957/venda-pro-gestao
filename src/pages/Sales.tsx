@@ -239,7 +239,7 @@ const SaleForm: React.FC<{
       })),
       total,
       paymentMethod,
-      paymentStatus: paymentMethod === 'cash' ? 'paid' : 'pending',
+      paymentStatus: paymentMethod === 'cash' ? 'paid' as PaymentStatus : 'pending' as PaymentStatus,
       ...(paymentMethod === 'installment' ? {
         installments,
         installmentDates: installmentDates.map(date => ({
