@@ -68,6 +68,8 @@ button[data-variant="default"] {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  background-color: #7c3aed !important;
+  color: #fff !important;
 }
 
 .btn:hover,
@@ -76,6 +78,22 @@ button[type="submit"]:hover,
 button[data-variant="default"]:hover {
   background-color: #6d28d9 !important;
   color: #fff !important;
+}
+
+/* Exceção para botões de ícone (editar, deletar) */
+button.icon,
+.button.icon,
+.btn.icon {
+  background-color: transparent !important;
+  color: #7c3aed !important;
+  border: none !important;
+}
+
+button.icon:hover,
+.button.icon:hover,
+.btn.icon:hover {
+  background-color: #f3e8ff !important;
+  color: #6d28d9 !important;
 }
 
 /* Variantes de botões */
