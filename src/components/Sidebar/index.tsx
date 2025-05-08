@@ -4,7 +4,7 @@ import SidebarItem from "../SidebarItem";
 
 export default function Sidebar() {
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-60 border-r bg-card">
+    <aside className="fixed left-0 top-0 z-40 h-screen w-60 border-r bg-card dark:bg-sidebar">
       <div className="flex h-full flex-col">
         {/* Header */}
         <div className="border-b px-6 py-4">
