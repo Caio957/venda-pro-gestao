@@ -17,13 +17,13 @@ const SidebarItem = ({ href, icon, label }: SidebarItemProps) => {
     <Link
       to={href}
       className={cn(
-        "sidebar-item flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all mb-1",
+        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all mb-1",
         isActive 
-          ? "sidebar-item-active" 
-          : "sidebar-item-inactive"
+          ? "bg-primary text-primary-foreground font-semibold border border-primary/50 shadow-sm" 
+          : "text-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/30 border border-transparent"
       )}
     >
-      <span className="shrink-0 text-inherit">
+      <span className="text-inherit shrink-0">
         {icon}
       </span>
       <span>{label}</span>
