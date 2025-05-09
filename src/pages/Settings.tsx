@@ -39,6 +39,11 @@ function applyPrimaryColorVars(colorId: string) {
   // Adiciona classe específica da cor para melhor controle via CSS
   document.documentElement.classList.remove(...themeColors.map(c => `theme-${c.id}`));
   document.documentElement.classList.add(`theme-${colorId}`);
+  
+  // Forçar a atualização do DOM para refletir as mudanças de cores
+  document.body.style.transition = 'none';
+  document.body.offsetHeight; // Trigger a reflow
+  document.body.style.transition = '';
 }
 
 export default function Settings() {
@@ -77,10 +82,9 @@ export default function Settings() {
   // Função para atualizar a cor
   const handleColorChange = (colorId: string) => {
     setPrimaryColor(colorId);
-    document.documentElement.classList.remove(...themeColors.map(color => `theme-${color.id}`));
-    document.documentElement.classList.add(`theme-${colorId}`);
     updateSettings({ ...settings, primaryColor: colorId });
     applyPrimaryColorVars(colorId);
+    
     const selectedColor = themeColors.find(color => color.id === colorId);
     if (selectedColor) {
       toast({
@@ -88,19 +92,35 @@ export default function Settings() {
         description: `A cor do sistema foi alterada para ${selectedColor.name}.`
       });
     }
+    
+    // Força a aplicação das cores aos elementos
+    setTimeout(() => {
+      const buttons = document.querySelectorAll('button');
+      buttons.forEach(button => {
+        button.style.transition = 'none';
+        button.offsetHeight; // Trigger a reflow
+        button.style.transition = '';
+      });
+    }, 50);
   };
 
   // Aplicar configurações ao carregar a página
   useEffect(() => {
     document.documentElement.classList.remove('light', 'dark');
     document.documentElement.classList.add(theme);
+    
     // Aplicar cor do tema
     if (primaryColor) {
-      document.documentElement.classList.remove(...themeColors.map(color => `theme-${color.id}`));
-      document.documentElement.classList.add(`theme-${primaryColor}`);
       applyPrimaryColorVars(primaryColor);
     }
   }, [theme, primaryColor]);
+
+  // Certifica-se que as cores são aplicadas assim que o componente é montado
+  useEffect(() => {
+    if (primaryColor) {
+      applyPrimaryColorVars(primaryColor);
+    }
+  }, []);
 
   return (
     <div className="container mx-auto py-6">
