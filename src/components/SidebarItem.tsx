@@ -23,9 +23,7 @@ const SidebarItem = ({ href, icon, label }: SidebarItemProps) => {
           : "hover:bg-primary/10 hover:text-primary hover:border-primary/30"
       )}
     >
-      <span 
-        className="shrink-0"
-      >
+      <span className="shrink-0 text-inherit">
         {icon}
       </span>
       <span>{label}</span>
