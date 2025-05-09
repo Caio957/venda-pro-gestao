@@ -1,5 +1,5 @@
 
-import { LayoutGrid, Package, Users, ShoppingCart, FileText, Settings } from "lucide-react";
+import { LayoutGrid, Package, Users, ShoppingCart, FileText, Settings, Receipt } from "lucide-react";
 import SidebarItem from "../SidebarItem";
 
 export default function Sidebar() {
@@ -35,6 +35,11 @@ export default function Sidebar() {
               href="/sales"
               icon={<ShoppingCart className="h-4 w-4" />}
               label="Vendas"
+            />
+            <SidebarItem
+              href="/receivables"
+              icon={<Receipt className="h-4 w-4" />}
+              label="Contas a Receber"
             />
             <SidebarItem
               href="/reports"

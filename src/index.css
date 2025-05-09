@@ -234,23 +234,23 @@ button[data-variant="default"]:disabled {
 }
 
 /* Sidebar e navegação */
-.sidebar-item, .sidebar {
+.sidebar-item {
   background-color: transparent !important;
-  color: #222 !important;
+  color: hsl(var(--foreground)) !important;
   transition: all 0.2s ease;
 }
 
 .sidebar-item:hover {
-  background-color: color-mix(in srgb, hsl(var(--primary)) 10%, transparent);
+  background-color: color-mix(in srgb, hsl(var(--primary)) 5%, transparent) !important;
   color: hsl(var(--primary));
-  border-color: color-mix(in srgb, hsl(var(--primary)) 30%, transparent);
+  border-color: hsl(var(--primary) / 0.2);
 }
 
 .sidebar-item.active {
-  background-color: color-mix(in srgb, hsl(var(--primary)) 15%, transparent);
+  background-color: color-mix(in srgb, hsl(var(--primary)) 10%, transparent) !important;
   color: hsl(var(--primary));
   font-weight: 600;
-  border-color: color-mix(in srgb, hsl(var(--primary)) 40%, transparent);
+  border: 1px solid hsl(var(--primary) / 0.3);
 }
 
 /* Fix for dark mode sidebar items */
@@ -260,16 +260,16 @@ button[data-variant="default"]:disabled {
 }
 
 .dark .sidebar-item:hover {
-  background-color: hsl(var(--sidebar-accent)) !important;
-  color: hsl(var(--sidebar-accent-foreground)) !important;
-  border-color: color-mix(in srgb, hsl(var(--primary)) 30%, transparent);
+  background-color: color-mix(in srgb, hsl(var(--primary)) 15%, transparent) !important;
+  color: hsl(var(--primary)) !important;
+  border-color: hsl(var(--primary) / 0.3);
 }
 
 .dark .sidebar-item.active {
-  background-color: hsl(var(--sidebar-accent)) !important;
-  color: hsl(var(--sidebar-accent-foreground)) !important;
+  background-color: color-mix(in srgb, hsl(var(--primary)) 20%, transparent) !important;
+  color: hsl(var(--primary)) !important;
   font-weight: 600;
-  border-color: color-mix(in srgb, hsl(var(--primary)) 40%, transparent);
+  border-color: hsl(var(--primary) / 0.4);
 }
 
 /* Tabs */

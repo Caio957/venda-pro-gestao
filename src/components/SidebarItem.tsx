@@ -18,10 +18,12 @@ const SidebarItem = ({ href, icon, label }: SidebarItemProps) => {
       to={href}
       className={cn(
         "sidebar-item flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-        isActive && "active"
+        isActive 
+          ? "active bg-primary/10 text-primary border border-primary/30" 
+          : "hover:bg-primary/5 hover:text-primary hover:border-primary/20 border border-transparent"
       )}
     >
-      <span className="shrink-0">{icon}</span>
+      <span className={cn("shrink-0", isActive ? "text-primary" : "")}>{icon}</span>
       <span>{label}</span>
     </Link>
   );
