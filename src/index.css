@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -236,43 +235,53 @@ button[data-variant="default"]:disabled {
 /* Sidebar e navegação */
 .sidebar-item {
   background-color: transparent !important;
-  color: var(--sidebar-foreground, hsl(var(--foreground))) !important;
+  color: hsl(var(--foreground)) !important;
   transition: all 0.2s ease;
   border: 1px solid transparent !important;
 }
 
 .sidebar-item:hover {
-  background-color: hsla(var(--primary), 0.1) !important;
+  background-color: hsl(var(--primary) / 0.1) !important;
   color: hsl(var(--primary)) !important;
-  border-color: hsla(var(--primary), 0.3) !important;
+  border-color: hsl(var(--primary) / 0.3) !important;
 }
 
-.sidebar-item.active {
+.sidebar-item-active {
   background-color: hsl(var(--primary)) !important;
   color: hsl(var(--primary-foreground)) !important;
   font-weight: 600 !important;
-  border: 1px solid hsla(var(--primary), 0.5) !important;
+  border: 1px solid hsl(var(--primary) / 0.5) !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+.sidebar-item-inactive {
+  background-color: transparent !important;
+  color: hsl(var(--foreground)) !important;
+  border: 1px solid transparent !important;
 }
 
 /* Fix for dark mode sidebar items */
 .dark .sidebar-item {
-  background-color: hsl(var(--sidebar-background)) !important;
   color: hsl(var(--sidebar-foreground)) !important;
 }
 
 .dark .sidebar-item:hover {
-  background-color: hsla(var(--primary), 0.15) !important;
+  background-color: hsl(var(--primary) / 0.15) !important;
   color: hsl(var(--primary)) !important;
-  border-color: hsla(var(--primary), 0.3) !important;
+  border-color: hsl(var(--primary) / 0.3) !important;
 }
 
-.dark .sidebar-item.active {
+.dark .sidebar-item-active {
   background-color: hsl(var(--primary)) !important;
   color: hsl(var(--primary-foreground)) !important;
   font-weight: 600;
-  border-color: hsla(var(--primary), 0.5) !important;
+  border-color: hsl(var(--primary) / 0.5) !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.dark .sidebar-item-inactive {
+  background-color: transparent !important;
+  color: hsl(var(--sidebar-foreground)) !important;
 }
 
 /* Tabs */

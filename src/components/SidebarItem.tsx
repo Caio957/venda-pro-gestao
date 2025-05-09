@@ -19,8 +19,8 @@ const SidebarItem = ({ href, icon, label }: SidebarItemProps) => {
       className={cn(
         "sidebar-item flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all mb-1",
         isActive 
-          ? "active" 
-          : "hover:bg-primary/10 hover:text-primary hover:border-primary/30"
+          ? "sidebar-item-active" 
+          : "sidebar-item-inactive"
       )}
     >
       <span className="shrink-0 text-inherit">
