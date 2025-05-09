@@ -241,16 +241,16 @@ button[data-variant="default"]:disabled {
 }
 
 .sidebar-item:hover {
-  background-color: color-mix(in srgb, hsl(var(--primary)) 5%, transparent) !important;
-  color: hsl(var(--primary));
-  border-color: hsl(var(--primary) / 0.2);
+  background-color: hsl(var(--primary) / 0.1) !important;
+  color: hsl(var(--primary)) !important;
+  border-color: hsl(var(--primary) / 0.2) !important;
 }
 
 .sidebar-item.active {
-  background-color: color-mix(in srgb, hsl(var(--primary)) 10%, transparent) !important;
-  color: hsl(var(--primary));
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
   font-weight: 600;
-  border: 1px solid hsl(var(--primary) / 0.3);
+  border: 1px solid hsl(var(--primary) / 0.3) !important;
 }
 
 /* Fix for dark mode sidebar items */
@@ -260,16 +260,16 @@ button[data-variant="default"]:disabled {
 }
 
 .dark .sidebar-item:hover {
-  background-color: color-mix(in srgb, hsl(var(--primary)) 15%, transparent) !important;
+  background-color: hsl(var(--primary) / 0.15) !important;
   color: hsl(var(--primary)) !important;
-  border-color: hsl(var(--primary) / 0.3);
+  border-color: hsl(var(--primary) / 0.3) !important;
 }
 
 .dark .sidebar-item.active {
-  background-color: color-mix(in srgb, hsl(var(--primary)) 20%, transparent) !important;
-  color: hsl(var(--primary)) !important;
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
   font-weight: 600;
-  border-color: hsl(var(--primary) / 0.4);
+  border-color: hsl(var(--primary) / 0.4) !important;
 }
 
 /* Tabs */
