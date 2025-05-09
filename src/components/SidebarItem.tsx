@@ -22,8 +22,19 @@ const SidebarItem = ({ href, icon, label }: SidebarItemProps) => {
           ? "active bg-primary text-primary-foreground" 
           : "hover:bg-primary/10 hover:text-primary border border-transparent"
       )}
+      style={isActive ? {
+        backgroundColor: `hsl(var(--primary))`,
+        color: `hsl(var(--primary-foreground))`,
+        border: `1px solid hsla(var(--primary), 0.3)`,
+        fontWeight: 600
+      } : {}}
     >
-      <span className={cn("shrink-0", isActive ? "text-primary-foreground" : "")}>{icon}</span>
+      <span 
+        className={cn("shrink-0", isActive ? "text-primary-foreground" : "")}
+        style={isActive ? { color: `hsl(var(--primary-foreground))` } : {}}
+      >
+        {icon}
+      </span>
       <span>{label}</span>
     </Link>
   );
