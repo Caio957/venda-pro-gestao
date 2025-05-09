@@ -235,10 +235,10 @@ button[data-variant="default"]:disabled {
 
 /* Sidebar e navegação */
 .sidebar-item {
-  background-color: transparent;
-  color: hsl(var(--foreground));
+  background-color: white !important;
+  color: hsl(var(--foreground)) !important;
   transition: all 0.2s ease;
-  border: 1px solid transparent;
+  border: 1px solid transparent !important;
 }
 
 .sidebar-item:hover {
@@ -250,14 +250,14 @@ button[data-variant="default"]:disabled {
 .sidebar-item.active {
   background-color: hsl(var(--primary)) !important;
   color: hsl(var(--primary-foreground)) !important;
-  font-weight: 600;
+  font-weight: 600 !important;
   border: 1px solid hsla(var(--primary), 0.5) !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
 }
 
 /* Fix for dark mode sidebar items */
 .dark .sidebar-item {
-  background-color: transparent !important;
+  background-color: hsl(var(--sidebar-background)) !important;
   color: hsl(var(--sidebar-foreground)) !important;
 }
 
